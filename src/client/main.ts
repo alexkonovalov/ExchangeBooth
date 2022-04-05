@@ -11,6 +11,7 @@ import {
     Transaction,
     sendAndConfirmTransaction,
 } from '@solana/web3.js';
+import { createMint, getAccount, getMint, getOrCreateAssociatedTokenAccount, mintTo } from '@solana/spl-token';
 
 import * as borsh from 'borsh';
 import os from 'os';
@@ -20,9 +21,8 @@ import yaml from 'yaml';
 import { getMessageVec } from './commands';
 
 const PROGRAM_PATH = path.resolve(__dirname, '../../dist/program');
-const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, 'solana_play_1.so');
-const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'solana_play_1-keypair.json');
-
+const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, 'exchange_booth.so');
+const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'exchange_booth-keypair.json');
 
 /**
  * The state of a greeting account managed by the hello world program
@@ -161,8 +161,57 @@ async function callProgram (connection: Connection) {
   });
 
   trans.instructions = [
-      instruction
+    //  instruction
   ];
+
+  const mintAuthority = Keypair.generate();
+  const freezeAuthority = Keypair.generate();
+
+  const mint = await createMint(
+    connection,
+    myKeypair,
+    mintAuthority.publicKey,
+    freezeAuthority.publicKey,
+    9
+  );
+
+  let mintInfo = await getMint(
+    connection,
+    mint
+  )
+  
+  console.log("MINT Key:", mint.toBase58());
+  console.log("MINT Info:", mintInfo);
+
+  const tokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    myKeypair,
+    mint,
+    myKeypair.publicKey
+  );
+
+  await mintTo(
+    connection,
+    myKeypair,
+    mint,
+    tokenAccount.address,
+    mintAuthority,
+    100
+  );
+
+  const tokenAccountInfo = await getAccount(
+    connection,
+    tokenAccount.address
+  )
+  
+  mintInfo = await getMint(
+    connection,
+    mint
+  )
+
+  console.log("tokenaccount",tokenAccount.address.toBase58());
+  console.log("NEW MINT Info.supply", mintInfo.supply);
+  console.log("NEW tokenAccountInfo Info.amount", tokenAccountInfo.amount);
 
   await sendAndConfirmTransaction(
      connection,
