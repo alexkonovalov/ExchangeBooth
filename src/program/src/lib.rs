@@ -33,11 +33,12 @@ pub fn process_instruction(
     instruction_data: &[u8], // Ignored, all helloworld instructions are hellos
 ) -> ProgramResult {
 
-    let ix = ProgramInstruction::unpack(instruction_data);
+    let ix  = ProgramInstruction::unpack(instruction_data);
 
     msg!("instruction::::: {:?}", ix);
+    msg!("program id::::: {:?}", program_id);
 
-    msg!("Hello World Rust program entrypoint");
+    msg!("Goodbye World Rust program entrypoint");
 
     // Iterating accounts is safer than indexing
     let accounts_iter = &mut accounts.iter();
@@ -47,21 +48,35 @@ pub fn process_instruction(
 
     let signer_account = next_account_info(accounts_iter);
 
-    // The account must be owned by the program in order to modify its data
-    if account.owner != program_id {
-        msg!("Greeted account does not have the correct program id");
-        return Err(ProgramError::IncorrectProgramId);
+    msg!("$$$$$$$ greetedPubkey{:?}", account);
+    msg!("$$$$$$$ myAccount{:?}", signer_account);
+    let greetk2 = next_account_info(accounts_iter);
+    msg!("$$$$$$$ greet_key_2{:?}", greetk2);
+
+    match ix {
+        Ok(ProgramInstruction::InitializeExchangeBooth {  }) => {
+            // msg!("-------init exchange booth");
+        },
+        _ => {
+            msg!("+++++++ NOT init exchange booth");
+        }
     }
+
+    // The account must be owned by the program in order to modify its data
+    // if account.owner != program_id {
+    //     msg!("Greeted account does not have the correct program id");
+    //     return Err(ProgramError::IncorrectProgramId);
+    // }
 
     // Increment and store the number of times the account has been greeted
-    let mut greeting_account = GreetingAccount::try_from_slice(&account.data.borrow())?;
+    // let mut greeting_account = GreetingAccount::try_from_slice(&account.data.borrow())?;
 
 
-    if greeting_account.counter == 0 {
-        greeting_account.authority = Pubkey::from_str("DGUWh9zsVv3XmFGZxkTpdaJUQkkXvUUoWHundLsPjxMH").expect("bad authority pubkey");
-    }
+    // if greeting_account.counter == 0 {
+    //     greeting_account.authority = Pubkey::from_str("DGUWh9zsVv3XmFGZxkTpdaJUQkkXvUUoWHundLsPjxMH").expect("bad authority pubkey");
+    // }
 
-    greeting_account.counter += 1;
+    // greeting_account.counter += 1;
    //  greeting_account.data = instruction_data;
 
     let mut fuf: [u8; 8] = [0; 8];
@@ -75,13 +90,13 @@ pub fn process_instruction(
         }
     }
 
-    greeting_account.data = fuf;
+    // greeting_account.data = fuf;
 
-    msg!("greeting account END:: {:?}", greeting_account);
+    // msg!("greeting account END:: {:?}", greeting_account);
 
-    greeting_account.serialize(&mut &mut account.data.borrow_mut()[..])?;
+    // greeting_account.serialize(&mut &mut account.data.borrow_mut()[..])?;
 
-    msg!("Greeted {} time(s)!", greeting_account.counter);
+    // msg!("Greeted {} time(s)!", greeting_account.counter);
 
     Ok(())
 }

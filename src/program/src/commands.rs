@@ -4,8 +4,9 @@ use {
 
 #[derive(Debug, PartialEq, BorshDeserialize)]
 pub enum ProgramInstruction {
-    Echo { data: Vec<u8> }, 
+    Echo { data: Vec<u8> },
     AuthorisedEcho { data: Vec<u8> },
+    InitializeExchangeBooth {},
 }
 
 impl ProgramInstruction {

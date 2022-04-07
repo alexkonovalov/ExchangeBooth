@@ -125,6 +125,9 @@ async function callProgram (connection: Connection) {
     programId,
   );
 
+  console.log('//////Greeted pubkey Base58', greetedPubkey.toBase58());
+  console.log('//////Greeted pubkey is on curve', PublicKey.isOnCurve(greetedPubkey.toBytes()));
+  console.log('//////My Keypair is on curve', PublicKey.isOnCurve(myKeypair.publicKey.toBytes()));
   
   let storageCreationIntruction = SystemProgram.createAccountWithSeed({
     fromPubkey: myKeypair.publicKey,
@@ -150,9 +153,9 @@ async function callProgram (connection: Connection) {
   let echoData = getMessageVec("echo");
   const commandData = Buffer.concat([Buffer.from(new Uint8Array([1])),echoData]);
 
-  const instruction = new TransactionInstruction({
+  const echoInstruction = new TransactionInstruction({
     keys: [
-      { pubkey: greetedPubkey, isSigner: false, isWritable: true },
+      { pubkey: greetedPubkey, isSigner: true, isWritable: true },
       { pubkey: myKeypair.publicKey, isSigner: false, isWritable: true },
       { pubkey: greet_key_2.publicKey, isSigner: true, isWritable: false }
     ],
@@ -160,8 +163,20 @@ async function callProgram (connection: Connection) {
     data: commandData,
   });
 
+  //todo start EB instruction
+
+  const createEbInstruction = new TransactionInstruction({
+    keys: [
+      { pubkey: greetedPubkey, isSigner: false, isWritable: true },
+      { pubkey: myKeypair.publicKey, isSigner: false, isWritable: true },
+      { pubkey: greet_key_2.publicKey, isSigner: true, isWritable: false }
+    ],
+    programId,
+    data: Buffer.from(new Uint8Array([2])),
+  });
+
   trans.instructions = [
-    //  instruction
+    createEbInstruction
   ];
 
   const mintAuthority = Keypair.generate();
@@ -203,22 +218,28 @@ async function callProgram (connection: Connection) {
     connection,
     tokenAccount.address
   )
-  
+
   mintInfo = await getMint(
     connection,
     mint
   )
 
-  console.log("tokenaccount",tokenAccount.address.toBase58());
+  console.log("tokenaccount", tokenAccount.address.toBase58());
   console.log("NEW MINT Info.supply", mintInfo.supply);
   console.log("NEW tokenAccountInfo Info.amount", tokenAccountInfo.amount);
+
+  const account = await connection.getAccountInfo(tokenAccount.address);
+  console.log('Token account:', account);
+  console.log('Token account owner pk:', account?.owner.toBase58());
+  console.log('MY pk:', myKeypair.publicKey.toBase58());
 
   await sendAndConfirmTransaction(
      connection,
      trans,
      [
-       greet_key_2 
-      ],
+       greet_key_2,
+       myKeypair
+    ],
   );
 
   const greet_2 = await connection.getAccountInfo(myKeypair.publicKey);
