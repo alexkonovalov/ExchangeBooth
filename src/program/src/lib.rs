@@ -5,9 +5,11 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint,
     entrypoint::ProgramResult,
+    program::{invoke_signed, invoke},
     msg,
     program_error::ProgramError,
-    pubkey::Pubkey,
+    pubkey::Pubkey, system_instruction,
+    sysvar::{rent::Rent, Sysvar},
 };
 use std::str::FromStr;
 
@@ -33,7 +35,7 @@ pub fn process_instruction(
     instruction_data: &[u8], // Ignored, all helloworld instructions are hellos
 ) -> ProgramResult {
 
-    let ix  = ProgramInstruction::unpack(instruction_data);
+    let ix = ProgramInstruction::unpack(instruction_data);
 
     msg!("instruction::::: {:?}", ix);
     msg!("program id::::: {:?}", program_id);
@@ -44,19 +46,50 @@ pub fn process_instruction(
     let accounts_iter = &mut accounts.iter();
 
     // Get the account to say hello to
-    let account = next_account_info(accounts_iter)?;
-
-    let signer_account = next_account_info(accounts_iter);
-
-    msg!("$$$$$$$ greetedPubkey{:?}", account);
-    msg!("$$$$$$$ myAccount{:?}", signer_account);
-    let greetk2 = next_account_info(accounts_iter);
-    msg!("$$$$$$$ greet_key_2{:?}", greetk2);
+  
 
     match ix {
         Ok(ProgramInstruction::InitializeExchangeBooth {  }) => {
-            // msg!("-------init exchange booth");
-        },
+            msg!("-------init exchange booth START");
+
+            let user_ai = next_account_info(accounts_iter)?;
+            let eb_ai = next_account_info(accounts_iter)?;
+            let system_program = next_account_info(accounts_iter)?;
+
+            let (eb_key, bump) = Pubkey::find_program_address(
+                &[user_ai.key.as_ref()],
+                program_id,
+            );
+
+            msg!("eb_key {:?}", eb_key);
+            msg!("eb_ai.key {:?}", eb_ai.key);
+
+            invoke_signed(
+                &system_instruction::create_account(
+                    user_ai.key,
+                    eb_ai.key,
+                    Rent::get()?.minimum_balance(42),
+                    42,
+                    program_id,
+                ),
+                &[user_ai.clone(), eb_ai.clone(), system_program.clone()],
+                &[&[user_ai.key.as_ref(), &[bump]]],
+            )?;
+
+            // invoke_signed(
+            //     &spl_token::instruction::initialize_account(
+            //         program_id
+            //         eb_ai.key,
+            //         Rent::get()?.minimum_balance(42),
+            //         program_id,
+            //     ),
+            //     &[user_ai.clone(), eb_ai.clone(), system_program.clone()],
+            //     &[&[user_ai.key.as_ref(), &[bump]]],
+            // )?;
+
+
+            msg!("-------init exchange booth END");
+        }
         _ => {
             msg!("+++++++ NOT init exchange booth");
         }

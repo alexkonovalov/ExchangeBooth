@@ -163,21 +163,6 @@ async function callProgram (connection: Connection) {
     data: commandData,
   });
 
-  //todo start EB instruction
-
-  const createEbInstruction = new TransactionInstruction({
-    keys: [
-      { pubkey: greetedPubkey, isSigner: false, isWritable: true },
-      { pubkey: myKeypair.publicKey, isSigner: false, isWritable: true },
-      { pubkey: greet_key_2.publicKey, isSigner: true, isWritable: false }
-    ],
-    programId,
-    data: Buffer.from(new Uint8Array([2])),
-  });
-
-  trans.instructions = [
-    createEbInstruction
-  ];
 
   const mintAuthority = Keypair.generate();
   const freezeAuthority = Keypair.generate();
@@ -233,11 +218,36 @@ async function callProgram (connection: Connection) {
   console.log('Token account owner pk:', account?.owner.toBase58());
   console.log('MY pk:', myKeypair.publicKey.toBase58());
 
+  //todo start EB instruction
+
+  const ebKey = (await PublicKey.findProgramAddress(
+    [myKeypair.publicKey.toBuffer()],
+    programId
+  ))[0];
+
+  const createEbInstruction = new TransactionInstruction({
+    keys: [
+      { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
+      { pubkey: ebKey, isSigner: false, isWritable: true },
+      {
+        pubkey: SystemProgram.programId,
+        isSigner: false,
+        isWritable: false,
+      },
+    ],
+    programId,
+    data: Buffer.from(new Uint8Array([2])),
+  });
+
+  trans.instructions = [
+    createEbInstruction
+  ];
+
   await sendAndConfirmTransaction(
      connection,
      trans,
      [
-       greet_key_2,
+       //greet_key_2,
        myKeypair
     ],
   );

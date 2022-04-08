@@ -16,6 +16,7 @@ solana-program = "~1.8.14"
 [dev-dependencies]
 solana-program-test = "~1.8.14"
 solana-sdk = "~1.8.14"
+spl-token="2.0.3"
 
 [lib]
 name = "exchange_booth"
