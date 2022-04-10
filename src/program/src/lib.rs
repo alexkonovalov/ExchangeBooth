@@ -25,6 +25,13 @@ pub struct GreetingAccount {
     pub authority: Pubkey,
 }
 
+/// Define the type of state stored in accounts
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct ExchangeBoothAccount {
+    pub token1: Pubkey,
+    pub token2: Pubkey,
+}
+
 // Declare and export the program's entrypoint
 entrypoint!(process_instruction);
 
@@ -55,14 +62,21 @@ pub fn process_instruction(
             let user_ai = next_account_info(accounts_iter)?;
             let eb_ai = next_account_info(accounts_iter)?;
             let system_program = next_account_info(accounts_iter)?;
+            let token1_ai = next_account_info(accounts_iter)?;
+            let token2_ai = next_account_info(accounts_iter)?;
 
+            let xtra_seed = u8::from(2);
             let (eb_key, bump) = Pubkey::find_program_address(
-                &[user_ai.key.as_ref()],
+                &[user_ai.key.as_ref()/*, &[xtra_seed] */],
                 program_id,
             );
 
             msg!("eb_key {:?}", eb_key);
             msg!("eb_ai.key {:?}", eb_ai.key);
+            msg!("token1_ai.key {:?}", token1_ai.key);
+            msg!("token2_ai.key {:?}", token2_ai.key);
+            msg!("token1_ai {:?}", token1_ai);
+            msg!("token2_ai {:?}", token2_ai);
 
             invoke_signed(
                 &system_instruction::create_account(
@@ -73,8 +87,17 @@ pub fn process_instruction(
                     program_id,
                 ),
                 &[user_ai.clone(), eb_ai.clone(), system_program.clone()],
-                &[&[user_ai.key.as_ref(), &[bump]]],
+                &[&[user_ai.key.as_ref(), &[bump], /*&[xtra_seed]*/]],
             )?;
+
+            // let mut tracker = Tracker::try_from_slice(&tracker_ai.data.borrow())?;
+            // tracker.bump = bump;
+            // tracker.auth_bump = auth_bump;
+            // // Not necessary but potentially useful for client side queries
+            // tracker.counter = *counter.key;
+            // tracker.count = 0;
+            // tracker.serialize(&mut *tracker_ai.data.borrow_mut())?;
+
 
             // invoke_signed(
             //     &spl_token::instruction::initialize_account(

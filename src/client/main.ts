@@ -175,10 +175,24 @@ async function callProgram (connection: Connection) {
     9
   );
 
+  const mint2 = await createMint(
+    connection,
+    myKeypair,
+    mintAuthority.publicKey,
+    freezeAuthority.publicKey,
+    9
+  );
+
   let mintInfo = await getMint(
     connection,
     mint
-  )
+  );
+
+  let mint2Info = await getMint(
+    connection,
+    mint
+  );
+  
   
   console.log("MINT Key:", mint.toBase58());
   console.log("MINT Info:", mintInfo);
@@ -190,11 +204,28 @@ async function callProgram (connection: Connection) {
     myKeypair.publicKey
   );
 
+
+  const token2Account = await getOrCreateAssociatedTokenAccount(
+    connection,
+    myKeypair,
+    mint2,
+    myKeypair.publicKey
+  );
+
   await mintTo(
     connection,
     myKeypair,
     mint,
     tokenAccount.address,
+    mintAuthority,
+    100
+  );
+
+  await mintTo(
+    connection,
+    myKeypair,
+    mint2,
+    token2Account.address,
     mintAuthority,
     100
   );
@@ -221,7 +252,7 @@ async function callProgram (connection: Connection) {
   //todo start EB instruction
 
   const ebKey = (await PublicKey.findProgramAddress(
-    [myKeypair.publicKey.toBuffer()],
+    [myKeypair.publicKey.toBuffer()/*, new Uint8Array([2])*/],
     programId
   ))[0];
 
@@ -229,11 +260,9 @@ async function callProgram (connection: Connection) {
     keys: [
       { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
       { pubkey: ebKey, isSigner: false, isWritable: true },
-      {
-        pubkey: SystemProgram.programId,
-        isSigner: false,
-        isWritable: false,
-      },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: tokenAccount.address, isSigner: false, isWritable: false },
+      { pubkey: token2Account.address, isSigner: false, isWritable: false },
     ],
     programId,
     data: Buffer.from(new Uint8Array([2])),
