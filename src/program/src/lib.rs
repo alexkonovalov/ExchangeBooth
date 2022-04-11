@@ -47,8 +47,6 @@ pub fn process_instruction(
     msg!("instruction::::: {:?}", ix);
     msg!("program id::::: {:?}", program_id);
 
-    msg!("Goodbye World Rust program entrypoint");
-
     // Iterating accounts is safer than indexing
     let accounts_iter = &mut accounts.iter();
 
@@ -65,7 +63,6 @@ pub fn process_instruction(
             let token1_ai = next_account_info(accounts_iter)?;
             let token2_ai = next_account_info(accounts_iter)?;
 
-            let xtra_seed = u8::from(2);
             let (eb_key, bump) = Pubkey::find_program_address(
                 &[user_ai.key.as_ref()/*, &[xtra_seed] */],
                 program_id,
@@ -82,35 +79,20 @@ pub fn process_instruction(
                 &system_instruction::create_account(
                     user_ai.key,
                     eb_ai.key,
-                    Rent::get()?.minimum_balance(42),
-                    42,
+                    Rent::get()?.minimum_balance(64),
+                    64,
                     program_id,
                 ),
                 &[user_ai.clone(), eb_ai.clone(), system_program.clone()],
                 &[&[user_ai.key.as_ref(), &[bump], /*&[xtra_seed]*/]],
             )?;
 
-            // let mut tracker = Tracker::try_from_slice(&tracker_ai.data.borrow())?;
-            // tracker.bump = bump;
-            // tracker.auth_bump = auth_bump;
-            // // Not necessary but potentially useful for client side queries
-            // tracker.counter = *counter.key;
-            // tracker.count = 0;
-            // tracker.serialize(&mut *tracker_ai.data.borrow_mut())?;
+            let mut booth = ExchangeBoothAccount::try_from_slice(&eb_ai.data.borrow())?;
+            booth.token1 = *token1_ai.key;
+            booth.token2 = *token2_ai.key;
 
-
-            // invoke_signed(
-            //     &spl_token::instruction::initialize_account(
-            //         program_id
-            //         eb_ai.key,
-            //         Rent::get()?.minimum_balance(42),
-            //         program_id,
-            //     ),
-            //     &[user_ai.clone(), eb_ai.clone(), system_program.clone()],
-            //     &[&[user_ai.key.as_ref(), &[bump]]],
-            // )?;
-
-
+            booth.serialize(&mut *eb_ai.data.borrow_mut())?;
+            
             msg!("-------init exchange booth END");
         }
         _ => {
