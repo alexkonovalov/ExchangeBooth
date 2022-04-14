@@ -7,11 +7,12 @@ import {
     PublicKey,
     LAMPORTS_PER_SOL,
     SystemProgram,
+    SYSVAR_RENT_PUBKEY,
     TransactionInstruction,
     Transaction,
     sendAndConfirmTransaction,
 } from '@solana/web3.js';
-import { createMint, getAccount, getMint, getOrCreateAssociatedTokenAccount, mintTo } from '@solana/spl-token';
+import { createMint, getAccount, getMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 import * as borsh from 'borsh';
 import os from 'os';
@@ -204,7 +205,6 @@ async function callProgram (connection: Connection) {
     myKeypair.publicKey
   );
 
-
   const token2Account = await getOrCreateAssociatedTokenAccount(
     connection,
     myKeypair,
@@ -218,7 +218,7 @@ async function callProgram (connection: Connection) {
     mint,
     tokenAccount.address,
     mintAuthority,
-    100
+    1000
   );
 
   await mintTo(
@@ -227,7 +227,7 @@ async function callProgram (connection: Connection) {
     mint2,
     token2Account.address,
     mintAuthority,
-    100
+    1000
   );
 
   const tokenAccountInfo = await getAccount(
@@ -268,8 +268,36 @@ async function callProgram (connection: Connection) {
     data: Buffer.from(new Uint8Array([2])),
   });
 
+  const tok1PDAKey = (await PublicKey.findProgramAddress(
+    [myKeypair.publicKey.toBuffer(), mint.toBuffer()],
+    programId
+  ))[0];
+  
+
+  const tok2PDAKey = (await PublicKey.findProgramAddress(
+    [myKeypair.publicKey.toBuffer(), mint2.toBuffer()],
+    programId
+  ))[0];
+
+  const exchangeInstruction = new TransactionInstruction({
+    programId,
+    keys: [
+      { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
+      { pubkey: tok1PDAKey, isSigner: false, isWritable: true },
+      { pubkey: tok2PDAKey, isSigner: false, isWritable: true },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: mint2, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: tokenAccount.address, isSigner: false, isWritable: true },
+    ],
+    data: Buffer.from(new Uint8Array([1])),
+  });
+
   trans.instructions = [
-    createEbInstruction
+    //createEbInstruction
+    exchangeInstruction
   ];
 
   await sendAndConfirmTransaction(

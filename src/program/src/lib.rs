@@ -8,22 +8,15 @@ use solana_program::{
     program::{invoke_signed, invoke},
     msg,
     program_error::ProgramError,
-    pubkey::Pubkey, system_instruction,
+    pubkey::Pubkey, system_instruction::{self},
     sysvar::{rent::Rent, Sysvar},
 };
 use std::str::FromStr;
+use spl_token::instruction::{ initialize_account, transfer };
+
 
 use crate::commands::ProgramInstruction;
 pub mod commands;
-
-/// Define the type of state stored in accounts
-#[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct GreetingAccount {
-    /// number of greetings
-    pub counter: u32,
-    pub data: [u8; 8],
-    pub authority: Pubkey,
-}
 
 /// Define the type of state stored in accounts
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -44,8 +37,8 @@ pub fn process_instruction(
 
     let ix = ProgramInstruction::unpack(instruction_data);
 
-    msg!("instruction::::: {:?}", ix);
-    msg!("program id::::: {:?}", program_id);
+    // msg!("instruction::::: {:?}", ix);
+    // msg!("program id::::: {:?}", program_id);
 
     // Iterating accounts is safer than indexing
     let accounts_iter = &mut accounts.iter();
@@ -54,6 +47,64 @@ pub fn process_instruction(
   
 
     match ix {
+        Ok(ProgramInstruction::Exchange {  }) => {
+            let user_ai = next_account_info(accounts_iter)?;
+            let vault1 = next_account_info(accounts_iter)?;
+            let vault2 = next_account_info(accounts_iter)?;
+            let mint1 = next_account_info(accounts_iter)?;
+            let mint2 = next_account_info(accounts_iter)?;
+            let token_program = next_account_info(accounts_iter)?;
+            let rent_program = next_account_info(accounts_iter)?;
+            let system_program = next_account_info(accounts_iter)?;
+            let token_ai = next_account_info(accounts_iter)?;
+
+            let (_vault1_key, bump) = Pubkey::find_program_address(
+                &[user_ai.key.as_ref(), mint1.key.as_ref()],
+                program_id,
+            );
+
+            msg!("token info::: {:?}", token_ai);
+            msg!("vault info::: {:?}", vault1);
+            msg!("user_ai info::: {:?}", user_ai);
+
+            invoke_signed(
+                &system_instruction::create_account(
+                    user_ai.key,
+                    vault1.key,
+                    Rent::get()?.minimum_balance(165),
+                    165,
+                    token_program.key,
+                ),
+                &[user_ai.clone(), system_program.clone(), token_program.clone(), vault1.clone()],
+                &[&[user_ai.key.as_ref(), mint1.key.as_ref(), &[bump]]],
+            )?;
+
+            invoke_signed(
+                &initialize_account(
+                    token_program.key,
+                    vault1.key,
+                    mint1.key,
+                    vault1.key,
+                )?,
+                &[token_program.clone(), vault1.clone(), mint1.clone(), user_ai.clone(), rent_program.clone()],
+                &[&[user_ai.key.as_ref(), mint1.key.as_ref(), &[bump]]],
+            )?;
+
+            invoke(
+                &transfer(
+                    token_program.key,
+                    token_ai.key,
+                    vault1.key,
+                    user_ai.key,
+                    &[user_ai.key],
+                    100,
+                )?,
+                &[token_program.clone(), vault1.clone(), token_ai.clone(), user_ai.clone()],
+            )?;
+
+            msg!("vault info::: {:?}", vault1);
+
+        },
         Ok(ProgramInstruction::InitializeExchangeBooth {  }) => {
             msg!("-------init exchange booth START");
 
