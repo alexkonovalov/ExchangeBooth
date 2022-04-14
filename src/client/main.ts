@@ -12,7 +12,7 @@ import {
     Transaction,
     sendAndConfirmTransaction,
 } from '@solana/web3.js';
-import { createMint, getAccount, getMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { createMint, getAccount, getMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID, } from '@solana/spl-token';
 
 import * as borsh from 'borsh';
 import os from 'os';
@@ -256,18 +256,6 @@ async function callProgram (connection: Connection) {
     programId
   ))[0];
 
-  const createEbInstruction = new TransactionInstruction({
-    keys: [
-      { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
-      { pubkey: ebKey, isSigner: false, isWritable: true },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      { pubkey: tokenAccount.address, isSigner: false, isWritable: false },
-      { pubkey: token2Account.address, isSigner: false, isWritable: false },
-    ],
-    programId,
-    data: Buffer.from(new Uint8Array([2])),
-  });
-
   const tok1PDAKey = (await PublicKey.findProgramAddress(
     [myKeypair.publicKey.toBuffer(), mint.toBuffer()],
     programId
@@ -279,25 +267,37 @@ async function callProgram (connection: Connection) {
     programId
   ))[0];
 
-  const exchangeInstruction = new TransactionInstruction({
+  const createEbInstruction = new TransactionInstruction({
+    keys: [
+      { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
+      { pubkey: ebKey, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: mint2, isSigner: false, isWritable: false },
+      { pubkey: tok1PDAKey, isSigner: false, isWritable: true },
+      { pubkey: tok2PDAKey, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+    ],
+    programId,
+    data: Buffer.from(new Uint8Array([0])),
+  });
+
+  const depositInstruction = new TransactionInstruction({
     programId,
     keys: [
       { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
       { pubkey: tok1PDAKey, isSigner: false, isWritable: true },
       { pubkey: tok2PDAKey, isSigner: false, isWritable: true },
-      { pubkey: mint, isSigner: false, isWritable: false },
-      { pubkey: mint2, isSigner: false, isWritable: false },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
       { pubkey: tokenAccount.address, isSigner: false, isWritable: true },
     ],
     data: Buffer.from(new Uint8Array([1])),
   });
 
   trans.instructions = [
-    //createEbInstruction
-    exchangeInstruction
+    createEbInstruction
+    //exchangeInstruction
   ];
 
   await sendAndConfirmTransaction(
