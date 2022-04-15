@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node src/client/main.ts",
+    "generate:keys": "solana-keygen new -o dist/keys/mint1.so --no-bip39-passphrase --force; solana-keygen new -o dist/keys/mint2.so --no-bip39-passphrase --force;",
     "build:program": "cargo build-bpf --manifest-path=./src/program/Cargo.toml --bpf-out-dir=dist/program",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

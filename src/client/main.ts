@@ -22,6 +22,10 @@ import yaml from 'yaml';
 import { getMessageVec } from './commands';
 
 const PROGRAM_PATH = path.resolve(__dirname, '../../dist/program');
+const KEYS_PATH = path.resolve(__dirname, '../../dist/keys');
+const MINT1_SO_PATH = path.join(KEYS_PATH, 'mint1.so');
+const MINT2_SO_PATH = path.join(KEYS_PATH, 'mint2.so');
+
 const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, 'exchange_booth.so');
 const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'exchange_booth-keypair.json');
 
@@ -74,6 +78,8 @@ export async function createKeypairFromFile(
   filePath: string,
 ): Promise<Keypair> {
   const secretKeyString = await fs.readFile(filePath, {encoding: 'utf8'});
+  console.log('secretKeyString', secretKeyString);
+
   const secretKey = Uint8Array.from(JSON.parse(secretKeyString));
   return Keypair.fromSecretKey(secretKey);
 }
@@ -85,7 +91,7 @@ async function main() {
   console.log('config:', config);
 
   let myKeypair = await createKeypairFromFile(config.keypair_path);
-  console.log('rpcUrl', config.json_rpc_url);
+  console.log('myKeypair', config.json_rpc_url);
   const connection = new Connection(config.json_rpc_url, 'confirmed');
 
   const version = await connection.getVersion();
@@ -112,6 +118,8 @@ async function callProgram (connection: Connection) {
   const config = await getConfig();
   let myKeypair = await createKeypairFromFile(config.keypair_path);
   let programKeypair = await createKeypairFromFile(PROGRAM_KEYPAIR_PATH);
+  let mint1Keypair = await createKeypairFromFile(MINT1_SO_PATH);
+  let mint2Keypair = await createKeypairFromFile(MINT2_SO_PATH);
   let programId = programKeypair.publicKey;
   console.log('programId', programId);
 
@@ -164,106 +172,81 @@ async function callProgram (connection: Connection) {
     data: commandData,
   });
 
+  // const mint = await createMint(
+  //   connection,
+  //   myKeypair,
+  //   myKeypair.publicKey,
+  //   myKeypair.publicKey,
+  //   9,
+  //   mint1Keypair
+  // );
 
-  const mintAuthority = Keypair.generate();
-  const freezeAuthority = Keypair.generate();
-
-  const mint = await createMint(
-    connection,
-    myKeypair,
-    mintAuthority.publicKey,
-    freezeAuthority.publicKey,
-    9
-  );
-
-  const mint2 = await createMint(
-    connection,
-    myKeypair,
-    mintAuthority.publicKey,
-    freezeAuthority.publicKey,
-    9
-  );
+  // const mint2 = await createMint(
+  //   connection,
+  //   myKeypair,
+  //   myKeypair.publicKey,
+  //   myKeypair.publicKey,
+  //   9,
+  //   mint2Keypair
+  // );
 
   let mintInfo = await getMint(
     connection,
-    mint
+    mint1Keypair.publicKey,
   );
+  console.log('mint info 1 ---', mintInfo);
 
   let mint2Info = await getMint(
     connection,
-    mint
+    mint2Keypair.publicKey,
   );
-  
-  
-  console.log("MINT Key:", mint.toBase58());
-  console.log("MINT Info:", mintInfo);
+  console.log('mint2Info ---', mint2Info);
+
 
   const tokenAccount = await getOrCreateAssociatedTokenAccount(
     connection,
     myKeypair,
-    mint,
+    mint1Keypair.publicKey,
     myKeypair.publicKey
   );
 
   const token2Account = await getOrCreateAssociatedTokenAccount(
     connection,
     myKeypair,
-    mint2,
+    mint2Keypair.publicKey,
     myKeypair.publicKey
   );
 
   await mintTo(
     connection,
     myKeypair,
-    mint,
+    mint1Keypair.publicKey,
     tokenAccount.address,
-    mintAuthority,
+    myKeypair.publicKey,
     1000
   );
 
   await mintTo(
     connection,
     myKeypair,
-    mint2,
+    mint2Keypair.publicKey,
     token2Account.address,
-    mintAuthority,
+    myKeypair.publicKey,
     1000
   );
-
-  const tokenAccountInfo = await getAccount(
-    connection,
-    tokenAccount.address
-  )
-
-  mintInfo = await getMint(
-    connection,
-    mint
-  )
-
-  console.log("tokenaccount", tokenAccount.address.toBase58());
-  console.log("NEW MINT Info.supply", mintInfo.supply);
-  console.log("NEW tokenAccountInfo Info.amount", tokenAccountInfo.amount);
-
-  const account = await connection.getAccountInfo(tokenAccount.address);
-  console.log('Token account:', account);
-  console.log('Token account owner pk:', account?.owner.toBase58());
-  console.log('MY pk:', myKeypair.publicKey.toBase58());
-
-  //todo start EB instruction
 
   const ebKey = (await PublicKey.findProgramAddress(
     [myKeypair.publicKey.toBuffer()/*, new Uint8Array([2])*/],
     programId
   ))[0];
 
-  const tok1PDAKey = (await PublicKey.findProgramAddress(
-    [myKeypair.publicKey.toBuffer(), mint.toBuffer()],
+  const vault1Key = (await PublicKey.findProgramAddress(
+    [myKeypair.publicKey.toBuffer(), mint1Keypair.publicKey.toBuffer()],
     programId
   ))[0];
-  
 
-  const tok2PDAKey = (await PublicKey.findProgramAddress(
-    [myKeypair.publicKey.toBuffer(), mint2.toBuffer()],
+  const vault2Key = (await PublicKey.findProgramAddress(
+    [myKeypair.publicKey.toBuffer(), mint2Keypair.publicKey.toBuffer()],
     programId
   ))[0];
 
@@ -272,10 +255,10 @@ async function callProgram (connection: Connection) {
       { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
       { pubkey: ebKey, isSigner: false, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      { pubkey: mint, isSigner: false, isWritable: false },
-      { pubkey: mint2, isSigner: false, isWritable: false },
-      { pubkey: tok1PDAKey, isSigner: false, isWritable: true },
-      { pubkey: tok2PDAKey, isSigner: false, isWritable: true },
+      { pubkey: mint1Keypair.publicKey, isSigner: false, isWritable: false },
+      { pubkey: mint2Keypair.publicKey, isSigner: false, isWritable: false },
+      { pubkey: vault1Key, isSigner: false, isWritable: true },
+      { pubkey: vault2Key, isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ],
@@ -287,17 +270,18 @@ async function callProgram (connection: Connection) {
     programId,
     keys: [
       { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
-      { pubkey: tok1PDAKey, isSigner: false, isWritable: true },
-      { pubkey: tok2PDAKey, isSigner: false, isWritable: true },
+      { pubkey: vault1Key, isSigner: false, isWritable: true },
+      { pubkey: vault2Key, isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: tokenAccount.address, isSigner: false, isWritable: true },
+      { pubkey: token2Account.address, isSigner: false, isWritable: true },
     ],
     data: Buffer.from(new Uint8Array([1])),
   });
 
   trans.instructions = [
-    createEbInstruction
-    //exchangeInstruction
+   // createEbInstruction
+    depositInstruction
   ];
 
   await sendAndConfirmTransaction(

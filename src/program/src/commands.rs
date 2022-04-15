@@ -5,7 +5,7 @@ use {
 #[derive(Debug, PartialEq, BorshDeserialize)]
 pub enum ProgramInstruction {
     InitializeExchangeBooth {},
-    Exchange {},
+    Deposit {},
 }
 
 impl ProgramInstruction {

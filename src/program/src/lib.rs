@@ -37,7 +37,7 @@ pub fn process_instruction(
 
     let ix = ProgramInstruction::unpack(instruction_data);
 
-    // msg!("instruction::::: {:?}", ix);
+    msg!("instruction::::: {:?}", ix);
     // msg!("program id::::: {:?}", program_id);
 
     // Iterating accounts is safer than indexing
@@ -47,37 +47,38 @@ pub fn process_instruction(
   
 
     match ix {
-        Ok(ProgramInstruction::Exchange {  }) => {
+        Ok(ProgramInstruction::Deposit {  }) => {
+            msg!("deposit");
             let user_ai = next_account_info(accounts_iter)?;
             let vault1 = next_account_info(accounts_iter)?;
             let vault2 = next_account_info(accounts_iter)?;
             let token_program = next_account_info(accounts_iter)?;
-            let token_ai = next_account_info(accounts_iter)?;
+            let source_mint1_ai = next_account_info(accounts_iter)?;
+            let source_mint2_ai = next_account_info(accounts_iter)?;
 
             invoke(
                 &transfer(
                     token_program.key,
-                    token_ai.key,
+                    source_mint1_ai.key,
                     vault1.key,
                     user_ai.key,
                     &[user_ai.key],
                     100,
                 )?,
-                &[token_program.clone(), vault2.clone(), token_ai.clone(), user_ai.clone()],
+                &[token_program.clone(), vault1.clone(), source_mint1_ai.clone(), user_ai.clone()],
             )?;
 
             invoke(
                 &transfer(
                     token_program.key,
-                    token_ai.key,
+                    source_mint2_ai.key,
                     vault2.key,
                     user_ai.key,
                     &[user_ai.key],
                     100,
                 )?,
-                &[token_program.clone(), vault2.clone(), token_ai.clone(), user_ai.clone()],
+                &[token_program.clone(), vault2.clone(), source_mint2_ai.clone(), user_ai.clone()],
             )?;
-            msg!("vault info::: {:?}", vault1);
 
         },
         Ok(ProgramInstruction::InitializeExchangeBooth {  }) => {
