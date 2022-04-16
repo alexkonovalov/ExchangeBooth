@@ -44,6 +44,8 @@ const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'exchange_booth-keypair.jso
   }
 }
 
+type IntstructionType = 0 | 1 | 2;
+
 /**
  * Borsh schema definition for greeting accounts
  */
@@ -85,6 +87,7 @@ export async function createKeypairFromFile(
 }
 
 async function main() {
+
   console.log("Running solana RPC program...");
 
   const config = await getConfig();
@@ -97,7 +100,11 @@ async function main() {
   const version = await connection.getVersion();
   console.log('Connection to cluster established:', config.json_rpc_url, version);
 
-  await callProgram(connection);
+
+  var args = process.argv.slice(2);
+  const ix = parseInt(args[0]) as IntstructionType;
+
+  await callProgram(connection, ix);
 }
 
 async function doAirdrop (connection: Connection) {
@@ -114,7 +121,7 @@ async function doAirdrop (connection: Connection) {
   console.log('airdropResponse', airdropResponse);
 }
 
-async function callProgram (connection: Connection) {
+async function callProgram (connection: Connection, ix: IntstructionType) {
   const config = await getConfig();
   let myKeypair = await createKeypairFromFile(config.keypair_path);
   let programKeypair = await createKeypairFromFile(PROGRAM_KEYPAIR_PATH);
@@ -172,23 +179,25 @@ async function callProgram (connection: Connection) {
     data: commandData,
   });
 
-  // const mint = await createMint(
-  //   connection,
-  //   myKeypair,
-  //   myKeypair.publicKey,
-  //   myKeypair.publicKey,
-  //   9,
-  //   mint1Keypair
-  // );
-
-  // const mint2 = await createMint(
-  //   connection,
-  //   myKeypair,
-  //   myKeypair.publicKey,
-  //   myKeypair.publicKey,
-  //   9,
-  //   mint2Keypair
-  // );
+  if (ix === 0) {
+    await createMint(
+      connection,
+      myKeypair,
+      myKeypair.publicKey,
+      myKeypair.publicKey,
+      9,
+      mint1Keypair
+    );
+  
+    await createMint(
+      connection,
+      myKeypair,
+      myKeypair.publicKey,
+      myKeypair.publicKey,
+      9,
+      mint2Keypair
+    );
+  }
 
   let mintInfo = await getMint(
     connection,
@@ -279,10 +288,10 @@ async function callProgram (connection: Connection) {
     data: Buffer.from(new Uint8Array([1])),
   });
 
+  
   trans.instructions = [
-   // createEbInstruction
-    depositInstruction
-  ];
+    ix === 0 ? createEbInstruction: depositInstruction,
+  ]
 
   await sendAndConfirmTransaction(
      connection,
