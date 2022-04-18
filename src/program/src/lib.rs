@@ -35,26 +35,30 @@ pub fn process_instruction(
     instruction_data: &[u8], // Ignored, all helloworld instructions are hellos
 ) -> ProgramResult {
 
+    msg!("instruction_data::::: {:?}", instruction_data);
+
     let ix = ProgramInstruction::unpack(instruction_data);
 
     msg!("instruction::::: {:?}", ix);
     // msg!("program id::::: {:?}", program_id);
-
     // Iterating accounts is safer than indexing
     let accounts_iter = &mut accounts.iter();
-
     // Get the account to say hello to
-  
 
     match ix {
-        Ok(ProgramInstruction::Deposit {  }) => {
-            msg!("deposit");
+        Ok(ProgramInstruction::Deposit { amount  }) => {
+            msg!("deposit, amount: {:?}", amount);
+            msg!("amount le bytes: {:?}",amount.to_le_bytes());
+
             let user_ai = next_account_info(accounts_iter)?;
             let vault1 = next_account_info(accounts_iter)?;
             let vault2 = next_account_info(accounts_iter)?;
             let token_program = next_account_info(accounts_iter)?;
             let source_mint1_ai = next_account_info(accounts_iter)?;
             let source_mint2_ai = next_account_info(accounts_iter)?;
+            let amount = (amount * f64::powf(10.0.into(), 9.into())) as u64;
+
+            msg!("deposit, amount2: {:?}", amount);
 
             invoke(
                 &transfer(
@@ -63,7 +67,7 @@ pub fn process_instruction(
                     vault1.key,
                     user_ai.key,
                     &[user_ai.key],
-                    100,
+                    amount,
                 )?,
                 &[token_program.clone(), vault1.clone(), source_mint1_ai.clone(), user_ai.clone()],
             )?;
@@ -126,7 +130,7 @@ pub fn process_instruction(
 
             invoke_signed(
                 &system_instruction::create_account(
-                    user_ai.key,
+                       user_ai.key,
                     vault2.key,
                     Rent::get()?.minimum_balance(165),
                     165,

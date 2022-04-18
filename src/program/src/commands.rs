@@ -1,3 +1,4 @@
+
 use {
     borsh::BorshDeserialize, solana_program::program_error::ProgramError,
 };
@@ -5,7 +6,9 @@ use {
 #[derive(Debug, PartialEq, BorshDeserialize)]
 pub enum ProgramInstruction {
     InitializeExchangeBooth {},
-    Deposit {},
+    Deposit {
+        amount: f64,
+    },
 }
 
 impl ProgramInstruction {

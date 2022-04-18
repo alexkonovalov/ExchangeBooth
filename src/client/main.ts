@@ -19,7 +19,8 @@ import os from 'os';
 import fs from 'mz/fs';
 import path from 'path';
 import yaml from 'yaml';
-import { getMessageVec } from './commands';
+import { getMessageVecBuffer, getF64Buffer } from './commands';
+import BN from 'bn.js';
 
 const PROGRAM_PATH = path.resolve(__dirname, '../../dist/program');
 const KEYS_PATH = path.resolve(__dirname, '../../dist/keys');
@@ -86,7 +87,26 @@ export async function createKeypairFromFile(
   return Keypair.fromSecretKey(secretKey);
 }
 
+class Assignable {
+  constructor(properties: { [x: string]: any; x?: number; y?: number; z?: string; q?: number[]; }) {
+      Object.keys(properties).map((key) => {
+        let me: any = this;
+        me[key] = properties[key];
+      });
+  }
+}
+
+class Test extends Assignable { }
+
 async function main() {
+  //const value = new Test({ x: 255, y: 20, z: '123', q: [1, 2, 3] });
+  //const schema = new Map([[Test, { kind: 'struct', fields: [['x', 'u8'], ['y', 'u64'], ['z', 'string'], ['q', [3]]] }]]);
+
+  // const value = new Test({ x: 255 });
+  // const schema = new Map([[Test, { kind: 'struct', fields: [['x', 'u32']] }]]);
+
+  // const buffer = borsh.serialize(schema, value);
+  // console.log('buffer::', buffer);
 
   console.log("Running solana RPC program...");
 
@@ -130,6 +150,7 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
   let programId = programKeypair.publicKey;
   console.log('programId', programId);
 
+  
   let buffer = Buffer.alloc(8);
   let data = new Uint8Array([44, 55, 66, 777, 1, 34, 9, 78]);
   buffer.fill(data);
@@ -166,7 +187,8 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
   let airdropResponse = await connection.confirmTransaction(sig);
   console.log('airdropResponse', airdropResponse);
 
-  let echoData = getMessageVec("echo");
+  let echoData = getMessageVecBuffer("echo");
+
   const commandData = Buffer.concat([Buffer.from(new Uint8Array([1])),echoData]);
 
   const echoInstruction = new TransactionInstruction({
@@ -275,6 +297,18 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
     data: Buffer.from(new Uint8Array([0])),
   });
 
+  const decimals = Buffer.from(new Uint8Array([0]));
+  console.log('decimals', decimals);
+  const value = Buffer.from(new Uint8Array(new BN(6666).toArray("le")));
+ // console.log('value', value);
+
+ // const val1 = Buffer.from(new Uint8Array(new BN(199999999).toArray("le", 4)));
+//  const val1 = Buffer.from([255, 255, 255, 63])
+  //console.log("val1::", val1);
+  // const depositAmount = Buffer.concat([decimals, value]);
+  const depositIxData = Buffer.concat([new Uint8Array([1]), getF64Buffer(1.234)]);
+
+  console.log('depositIxData {:?}', depositIxData);
   const depositInstruction = new TransactionInstruction({
     programId,
     keys: [
@@ -285,10 +319,9 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
       { pubkey: tokenAccount.address, isSigner: false, isWritable: true },
       { pubkey: token2Account.address, isSigner: false, isWritable: true },
     ],
-    data: Buffer.from(new Uint8Array([1])),
+    data: depositIxData,
   });
 
-  
   trans.instructions = [
     ix === 0 ? createEbInstruction: depositInstruction,
   ]
