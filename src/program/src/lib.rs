@@ -46,10 +46,7 @@ pub fn process_instruction(
     // Get the account to say hello to
 
     match ix {
-        Ok(ProgramInstruction::Deposit { amount  }) => {
-            msg!("deposit, amount: {:?}", amount);
-            msg!("amount le bytes: {:?}",amount.to_le_bytes());
-
+        Ok(ProgramInstruction::Deposit { amount, amount2  }) => {
             let user_ai = next_account_info(accounts_iter)?;
             let vault1 = next_account_info(accounts_iter)?;
             let vault2 = next_account_info(accounts_iter)?;
@@ -57,8 +54,7 @@ pub fn process_instruction(
             let source_mint1_ai = next_account_info(accounts_iter)?;
             let source_mint2_ai = next_account_info(accounts_iter)?;
             let amount = (amount * f64::powf(10.0.into(), 9.into())) as u64;
-
-            msg!("deposit, amount2: {:?}", amount);
+            let amount2 = (amount2 * f64::powf(10.0.into(), 9.into())) as u64;
 
             invoke(
                 &transfer(
@@ -79,7 +75,7 @@ pub fn process_instruction(
                     vault2.key,
                     user_ai.key,
                     &[user_ai.key],
-                    100,
+                    amount2,
                 )?,
                 &[token_program.clone(), vault2.clone(), source_mint2_ai.clone(), user_ai.clone()],
             )?;

@@ -248,23 +248,27 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
     myKeypair.publicKey
   );
 
-  await mintTo(
-    connection,
-    myKeypair,
-    mint1Keypair.publicKey,
-    tokenAccount.address,
-    myKeypair.publicKey,
-    1000
-  );
+  console.log('tokenAccount.address ---', tokenAccount.address.toBase58());
 
-  await mintTo(
-    connection,
-    myKeypair,
-    mint2Keypair.publicKey,
-    token2Account.address,
-    myKeypair.publicKey,
-    1000
-  );
+  if (ix === 0) {
+    await mintTo(
+      connection,
+      myKeypair,
+      mint1Keypair.publicKey,
+      tokenAccount.address,
+      myKeypair.publicKey,
+      10 * Math.pow(10, 9)
+    );
+
+    await mintTo(
+      connection,
+      myKeypair,
+      mint2Keypair.publicKey,
+      token2Account.address,
+      myKeypair.publicKey,
+      10 * Math.pow(10, 9)
+    );
+  }
 
   const ebKey = (await PublicKey.findProgramAddress(
     [myKeypair.publicKey.toBuffer()/*, new Uint8Array([2])*/],
@@ -300,13 +304,7 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
   const decimals = Buffer.from(new Uint8Array([0]));
   console.log('decimals', decimals);
   const value = Buffer.from(new Uint8Array(new BN(6666).toArray("le")));
- // console.log('value', value);
-
- // const val1 = Buffer.from(new Uint8Array(new BN(199999999).toArray("le", 4)));
-//  const val1 = Buffer.from([255, 255, 255, 63])
-  //console.log("val1::", val1);
-  // const depositAmount = Buffer.concat([decimals, value]);
-  const depositIxData = Buffer.concat([new Uint8Array([1]), getF64Buffer(1.234)]);
+  const depositIxData = Buffer.concat([new Uint8Array([1]), getF64Buffer(3.14), getF64Buffer(2.71)]);
 
   console.log('depositIxData {:?}', depositIxData);
   const depositInstruction = new TransactionInstruction({

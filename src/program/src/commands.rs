@@ -8,6 +8,7 @@ pub enum ProgramInstruction {
     InitializeExchangeBooth {},
     Deposit {
         amount: f64,
+        amount2: f64,
     },
 }
 
