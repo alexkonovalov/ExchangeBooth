@@ -233,7 +233,6 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
   );
   console.log('mint2Info ---', mint2Info);
 
-
   const tokenAccount = await getOrCreateAssociatedTokenAccount(
     connection,
     myKeypair,
@@ -270,8 +269,20 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
     );
   }
 
+  const oracleKey = (await PublicKey.findProgramAddress(
+    [
+      myKeypair.publicKey.toBuffer(),
+      mint1Keypair.publicKey.toBuffer(),
+      mint2Keypair.publicKey.toBuffer(),
+    ],
+    programId
+  ))[0];
+
+
   const ebKey = (await PublicKey.findProgramAddress(
-    [myKeypair.publicKey.toBuffer()/*, new Uint8Array([2])*/],
+    [
+      oracleKey.toBuffer()
+    ],
     programId
   ))[0];
 
@@ -296,6 +307,7 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
       { pubkey: mint2Keypair.publicKey, isSigner: false, isWritable: false },
       { pubkey: vault1Key, isSigner: false, isWritable: true },
       { pubkey: vault2Key, isSigner: false, isWritable: true },
+      { pubkey: oracleKey, isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ],
@@ -326,6 +338,7 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
   console.log('\\\\vault2 address::', vault2Key.toBase58());
   console.log('\\\\tokenAccount address::', tokenAccount.address.toBase58());
   console.log('\\\\token2Account address::', token2Account.address.toBase58());
+  console.log('\\\\oracle address::', oracleKey.toBase58());
   console.log('\\\\ebKey address::', ebKey.toBase58());
 
   const closeEbInstruction = new TransactionInstruction({
@@ -338,6 +351,7 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
       { pubkey: mint2Keypair.publicKey, isSigner: false, isWritable: true },
       { pubkey: tokenAccount.address, isSigner: false, isWritable: true },
       { pubkey: token2Account.address, isSigner: false, isWritable: true },
+      { pubkey: oracleKey, isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ],
     programId,

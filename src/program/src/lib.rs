@@ -90,16 +90,8 @@ pub fn process_instruction(
             let mint2 = next_account_info(accounts_iter)?;
             let destination_mint1_ai = next_account_info(accounts_iter)?;
             let destination_mint2_ai = next_account_info(accounts_iter)?;
-           // let vault2 = next_account_info(accounts_iter)?;
+            let oracle = next_account_info(accounts_iter)?;
             let token_program = next_account_info(accounts_iter)?;
-           // let source_mint2_ai = next_account_info(accounts_iter)?;
-
-           // let system_program = next_account_info(accounts_iter)?;
-            
-            // let (_eb_key, bump) = Pubkey::find_program_address(
-            //     &[user_ai.key.as_ref()],
-            //     program_id,
-            // );
 
             let vault1_content = Account::unpack(&vault1.data.borrow())?;
             let vault2_content = Account::unpack(&vault2.data.borrow())?;
@@ -164,20 +156,17 @@ pub fn process_instruction(
                 &[&[user_ai.key.as_ref(), mint2.key.as_ref(), &[bump2]]],
             )?;
 
-            msg!("#######################################111");
-            **user_ai.try_borrow_mut_lamports()? = user_ai
-                .lamports()
-                .checked_add(eb_ai.lamports())
-                .ok_or(ProgramError::InsufficientFunds)?; //todo find better error
-            msg!("#######################################222");
+             **user_ai.try_borrow_mut_lamports()? = user_ai
+                    .lamports()
+                    .checked_add(eb_ai.lamports())
+                    .ok_or(ProgramError::InsufficientFunds)?//todo find better error
+                    .checked_add(oracle.lamports())
+                    .ok_or(ProgramError::InsufficientFunds)?; //todo find better error
+             *eb_ai.try_borrow_mut_data()? = &mut [];
+             **eb_ai.try_borrow_mut_lamports()? = 0;
+             *oracle.try_borrow_mut_data()? = &mut [];
+             **oracle.try_borrow_mut_lamports()? = 0;
 
-            *eb_ai.try_borrow_mut_data()? = &mut [];
-            msg!("#######################################333");
-
-            **eb_ai.try_borrow_mut_lamports()? = 0;
-            msg!("#######################################444");
-
-        
         }
         Ok(ProgramInstruction::InitializeExchangeBooth {  }) => {
             let user_ai = next_account_info(accounts_iter)?;
@@ -187,12 +176,14 @@ pub fn process_instruction(
             let mint2 = next_account_info(accounts_iter)?;
             let vault1 = next_account_info(accounts_iter)?;
             let vault2 = next_account_info(accounts_iter)?;
+            let oracle = next_account_info(accounts_iter)?;
             let token_program = next_account_info(accounts_iter)?;
             let rent_program = next_account_info(accounts_iter)?;
             let (_vault1_key, bump) = Pubkey::find_program_address(
                 &[user_ai.key.as_ref(), mint1.key.as_ref()],
                 program_id,
             );
+
 
             invoke_signed(
                 &system_instruction::create_account(
@@ -245,10 +236,34 @@ pub fn process_instruction(
                 &[&[user_ai.key.as_ref(), mint2.key.as_ref(), &[bump]]],
             )?;
 
-            let (_eb_key, bump) = Pubkey::find_program_address(
-                &[user_ai.key.as_ref()],
+  
+
+            let (_oracle_key, oracle_bump) = Pubkey::find_program_address(
+                &[user_ai.key.as_ref(), mint1.key.as_ref(), mint2.key.as_ref()],
                 program_id,
             );
+
+            let (_eb_key, eb_bump) = Pubkey::find_program_address(
+                &[oracle.key.as_ref()],
+                program_id,
+            );
+                        
+            msg!("--------oracle key {:?}", oracle.key);
+            msg!("--------oracle bump {:?}", oracle_bump);
+            msg!("--------eb key {:?}", eb_ai.key);
+            msg!("--------eb bump {:?}",eb_bump);
+ 
+            invoke_signed(
+                &system_instruction::create_account(
+                    user_ai.key,
+                    oracle.key,
+                    Rent::get()?.minimum_balance(64),
+                    64,
+                    program_id,
+                ),
+                &[user_ai.clone(), oracle.clone(), system_program.clone()],
+                &[&[user_ai.key.as_ref(), mint1.key.as_ref(), mint2.key.as_ref(), &[oracle_bump]]],
+            )?;
 
             invoke_signed(
                 &system_instruction::create_account(
@@ -259,7 +274,7 @@ pub fn process_instruction(
                     program_id,
                 ),
                 &[user_ai.clone(), eb_ai.clone(), system_program.clone()],
-                &[&[user_ai.key.as_ref(), &[bump], /*&[xtra_seed]*/]],
+                &[&[oracle.key.as_ref(), &[eb_bump]]],
             )?;
 
             let mut booth = ExchangeBoothAccount::try_from_slice(&eb_ai.data.borrow())?;
@@ -267,7 +282,7 @@ pub fn process_instruction(
             booth.vault2 = *vault2.key;
 
             booth.serialize(&mut *eb_ai.data.borrow_mut())?;
-            
+
         }
         _ => {
             msg!("+++++++ NOT init exchange booth");
