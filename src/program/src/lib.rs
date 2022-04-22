@@ -25,6 +25,12 @@ pub struct ExchangeBoothAccount {
     pub vault2: Pubkey,
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct OracleAccount {
+    pub exchange_rate: f64,
+}
+
+
 // Declare and export the program's entrypoint
 entrypoint!(process_instruction);
 
@@ -168,7 +174,7 @@ pub fn process_instruction(
              **oracle.try_borrow_mut_lamports()? = 0;
 
         }
-        Ok(ProgramInstruction::InitializeExchangeBooth {  }) => {
+        Ok(ProgramInstruction::InitializeExchangeBooth { exchange_rate  }) => {
             let user_ai = next_account_info(accounts_iter)?;
             let eb_ai = next_account_info(accounts_iter)?;
             let system_program = next_account_info(accounts_iter)?;
@@ -176,7 +182,7 @@ pub fn process_instruction(
             let mint2 = next_account_info(accounts_iter)?;
             let vault1 = next_account_info(accounts_iter)?;
             let vault2 = next_account_info(accounts_iter)?;
-            let oracle = next_account_info(accounts_iter)?;
+            let oracle_ai = next_account_info(accounts_iter)?;
             let token_program = next_account_info(accounts_iter)?;
             let rent_program = next_account_info(accounts_iter)?;
             let (_vault1_key, bump) = Pubkey::find_program_address(
@@ -184,7 +190,7 @@ pub fn process_instruction(
                 program_id,
             );
 
-
+            
             invoke_signed(
                 &system_instruction::create_account(
                     user_ai.key,
@@ -244,24 +250,25 @@ pub fn process_instruction(
             );
 
             let (_eb_key, eb_bump) = Pubkey::find_program_address(
-                &[oracle.key.as_ref()],
+                &[oracle_ai.key.as_ref()],
                 program_id,
             );
                         
-            msg!("--------oracle key {:?}", oracle.key);
+            msg!("--------oracle key {:?}", oracle_ai.key);
             msg!("--------oracle bump {:?}", oracle_bump);
             msg!("--------eb key {:?}", eb_ai.key);
             msg!("--------eb bump {:?}",eb_bump);
+            msg!("-------_exchange rate {:?}", exchange_rate);
  
             invoke_signed(
                 &system_instruction::create_account(
                     user_ai.key,
-                    oracle.key,
+                    oracle_ai.key,
                     Rent::get()?.minimum_balance(64),
-                    64,
+                    8,
                     program_id,
                 ),
-                &[user_ai.clone(), oracle.clone(), system_program.clone()],
+                &[user_ai.clone(), oracle_ai.clone(), system_program.clone()],
                 &[&[user_ai.key.as_ref(), mint1.key.as_ref(), mint2.key.as_ref(), &[oracle_bump]]],
             )?;
 
@@ -274,7 +281,7 @@ pub fn process_instruction(
                     program_id,
                 ),
                 &[user_ai.clone(), eb_ai.clone(), system_program.clone()],
-                &[&[oracle.key.as_ref(), &[eb_bump]]],
+                &[&[oracle_ai.key.as_ref(), &[eb_bump]]],
             )?;
 
             let mut booth = ExchangeBoothAccount::try_from_slice(&eb_ai.data.borrow())?;
@@ -283,6 +290,9 @@ pub fn process_instruction(
 
             booth.serialize(&mut *eb_ai.data.borrow_mut())?;
 
+            let mut oracle = OracleAccount::try_from_slice(&oracle_ai.data.borrow())?;
+            oracle.exchange_rate = exchange_rate;
+            oracle.serialize(&mut *oracle_ai.data.borrow_mut())?;
         }
         _ => {
             msg!("+++++++ NOT init exchange booth");

@@ -5,7 +5,9 @@ use {
 
 #[derive(Debug, PartialEq, BorshDeserialize)]
 pub enum ProgramInstruction {
-    InitializeExchangeBooth {},
+    InitializeExchangeBooth {
+        exchange_rate: f64,
+    },
     Deposit {
         amount: f64,
         amount2: f64,

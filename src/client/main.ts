@@ -247,8 +247,6 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
     myKeypair.publicKey
   );
 
-  console.log('tokenAccount.address ---', tokenAccount.address.toBase58());
-
   if (ix === 0) {
     await mintTo(
       connection,
@@ -296,8 +294,7 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
     programId
   ))[0];
 
-  console.log('#################################### ebKey. address', ebKey.toBase58());
-
+  const createEbIxData = Buffer.concat([new Uint8Array([0]), getF64Buffer(0.5)]);
   const createEbInstruction = new TransactionInstruction({
     keys: [
       { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
@@ -312,15 +309,12 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
       { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ],
     programId,
-    data: Buffer.from(new Uint8Array([0])),
+    data: Buffer.from(createEbIxData),
   });
 
-  const decimals = Buffer.from(new Uint8Array([0]));
-  console.log('decimals', decimals);
-  const value = Buffer.from(new Uint8Array(new BN(6666).toArray("le")));
   const depositIxData = Buffer.concat([new Uint8Array([1]), getF64Buffer(3.14), getF64Buffer(2.71)]);
 
-  console.log('depositIxData', depositIxData);
+  console.log('depositIxData', createEbIxData);
   const depositInstruction = new TransactionInstruction({
     programId,
     keys: [
