@@ -8,11 +8,11 @@ use solana_program::{
     program::{invoke_signed, invoke},
     msg,
     program_error::ProgramError,
-    pubkey::Pubkey, system_instruction::{self},
-    sysvar::{rent::Rent, Sysvar},
+    pubkey::Pubkey, system_instruction::{self, SystemError },
+    sysvar::{rent::Rent, Sysvar}, program_pack::Pack,
 };
 use std::str::FromStr;
-use spl_token::instruction::{ initialize_account, transfer };
+use spl_token::{instruction::{ initialize_account, transfer, close_account }, state::Account};
 
 
 use crate::commands::ProgramInstruction;
@@ -81,6 +81,104 @@ pub fn process_instruction(
             )?;
 
         },
+        Ok(ProgramInstruction::CloseExchangeBooth {  }) => {
+            let user_ai = next_account_info(accounts_iter)?;
+            let eb_ai = next_account_info(accounts_iter)?;
+            let vault1 = next_account_info(accounts_iter)?;
+            let vault2 = next_account_info(accounts_iter)?;
+            let mint1 = next_account_info(accounts_iter)?;
+            let mint2 = next_account_info(accounts_iter)?;
+            let destination_mint1_ai = next_account_info(accounts_iter)?;
+            let destination_mint2_ai = next_account_info(accounts_iter)?;
+           // let vault2 = next_account_info(accounts_iter)?;
+            let token_program = next_account_info(accounts_iter)?;
+           // let source_mint2_ai = next_account_info(accounts_iter)?;
+
+           // let system_program = next_account_info(accounts_iter)?;
+            
+            // let (_eb_key, bump) = Pubkey::find_program_address(
+            //     &[user_ai.key.as_ref()],
+            //     program_id,
+            // );
+
+            let vault1_content = Account::unpack(&vault1.data.borrow())?;
+            let vault2_content = Account::unpack(&vault2.data.borrow())?;
+            
+            let (_vault1_key, bump1) = Pubkey::find_program_address(
+                &[user_ai.key.as_ref(), mint1.key.as_ref()],
+                program_id,
+            );
+
+            invoke_signed(
+                &transfer(
+                    token_program.key,
+                    vault1.key,
+                    destination_mint1_ai.key,
+                    vault1.key,
+                    &[vault1.key],
+                    vault1_content.amount,
+                )?,
+                &[vault1.clone(), destination_mint1_ai.clone(), user_ai.clone()],
+                &[&[user_ai.key.as_ref(), mint1.key.as_ref(), &[bump1]]],
+            )?;
+
+            let (_vault2_key, bump2) = Pubkey::find_program_address(
+                &[user_ai.key.as_ref(), mint2.key.as_ref()],
+                program_id,
+            );
+
+            invoke_signed(
+                &transfer(
+                    token_program.key,
+                    vault2.key,
+                    destination_mint2_ai.key,
+                    vault2.key,
+                    &[vault2.key],
+                    vault2_content.amount,
+                )?,
+                &[vault2.clone(), destination_mint2_ai.clone(), user_ai.clone()],
+                &[&[user_ai.key.as_ref(), mint2.key.as_ref(), &[bump2]]],
+            )?;
+
+            invoke_signed(
+                &close_account(
+                    token_program.key,
+                    vault1.key,
+                    destination_mint1_ai.key,
+                    vault1.key,
+                    &[vault1.key]
+                )?,
+                &[token_program.clone(), vault1.clone(), destination_mint1_ai.clone(), user_ai.clone()],
+                &[&[user_ai.key.as_ref(), mint1.key.as_ref(), &[bump1]]],
+            )?;
+
+            invoke_signed(
+                &close_account(
+                    token_program.key,
+                    vault2.key,
+                    destination_mint2_ai.key,
+                    vault2.key,
+                    &[vault2.key]
+                )?,
+                &[token_program.clone(), vault2.clone(), destination_mint2_ai.clone(), user_ai.clone()],
+                &[&[user_ai.key.as_ref(), mint2.key.as_ref(), &[bump2]]],
+            )?;
+
+            msg!("#######################################111");
+            **user_ai.try_borrow_mut_lamports()? = user_ai
+                .lamports()
+                .checked_add(eb_ai.lamports())
+                .ok_or(ProgramError::InsufficientFunds)?; //todo find better error
+            msg!("#######################################222");
+
+            *eb_ai.try_borrow_mut_data()? = &mut [];
+            msg!("#######################################333");
+
+            **eb_ai.try_borrow_mut_lamports()? = 0;
+            msg!("#######################################444");
+
+        
+        }
         Ok(ProgramInstruction::InitializeExchangeBooth {  }) => {
             let user_ai = next_account_info(accounts_iter)?;
             let eb_ai = next_account_info(accounts_iter)?;

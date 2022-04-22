@@ -162,9 +162,9 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
     programId,
   );
 
-  console.log('//////Greeted pubkey Base58', greetedPubkey.toBase58());
-  console.log('//////Greeted pubkey is on curve', PublicKey.isOnCurve(greetedPubkey.toBytes()));
-  console.log('//////My Keypair is on curve', PublicKey.isOnCurve(myKeypair.publicKey.toBytes()));
+  //console.log('//////Greeted pubkey Base58', greetedPubkey.toBase58());
+  //console.log('//////Greeted pubkey is on curve', PublicKey.isOnCurve(greetedPubkey.toBytes()));
+  //console.log('//////My Keypair is on curve', PublicKey.isOnCurve(myKeypair.publicKey.toBytes()));
   
   let storageCreationIntruction = SystemProgram.createAccountWithSeed({
     fromPubkey: myKeypair.publicKey,
@@ -285,6 +285,8 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
     programId
   ))[0];
 
+  console.log('#################################### ebKey. address', ebKey.toBase58());
+
   const createEbInstruction = new TransactionInstruction({
     keys: [
       { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
@@ -306,7 +308,7 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
   const value = Buffer.from(new Uint8Array(new BN(6666).toArray("le")));
   const depositIxData = Buffer.concat([new Uint8Array([1]), getF64Buffer(3.14), getF64Buffer(2.71)]);
 
-  console.log('depositIxData {:?}', depositIxData);
+  console.log('depositIxData', depositIxData);
   const depositInstruction = new TransactionInstruction({
     programId,
     keys: [
@@ -320,16 +322,48 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
     data: depositIxData,
   });
 
-  trans.instructions = [
-    ix === 0 ? createEbInstruction: depositInstruction,
-  ]
+  console.log('\\\\vault address::', vault1Key.toBase58());
+  console.log('\\\\vault2 address::', vault2Key.toBase58());
+  console.log('\\\\tokenAccount address::', tokenAccount.address.toBase58());
+  console.log('\\\\token2Account address::', token2Account.address.toBase58());
+  console.log('\\\\ebKey address::', ebKey.toBase58());
+
+  const closeEbInstruction = new TransactionInstruction({
+    keys: [
+      { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
+      { pubkey: ebKey, isSigner: false, isWritable: true },
+      { pubkey: vault1Key, isSigner: false, isWritable: true },
+      { pubkey: vault2Key, isSigner: false, isWritable: true },
+      { pubkey: mint1Keypair.publicKey, isSigner: false, isWritable: true },
+      { pubkey: mint2Keypair.publicKey, isSigner: false, isWritable: true },
+      { pubkey: tokenAccount.address, isSigner: false, isWritable: true },
+      { pubkey: token2Account.address, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    programId,
+    data: Buffer.from(new Uint8Array([2])),
+  });
+
+  switch (ix) {
+    case 0: {
+      trans.instructions = [createEbInstruction];
+      break;
+    }
+    case 1: {
+      trans.instructions = [depositInstruction];
+      break;
+    }
+    case 2: {
+      trans.instructions = [closeEbInstruction];
+      break;
+    }
+  }
 
   await sendAndConfirmTransaction(
      connection,
      trans,
      [
-       //greet_key_2,
-       myKeypair
+        myKeypair
     ],
   );
 
