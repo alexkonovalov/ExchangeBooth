@@ -13,6 +13,9 @@ pub enum ProgramInstruction {
         amount2: f64,
     },
     CloseExchangeBooth {},
+    Exchange {
+        amount: f64,
+    },
 }
 
 impl ProgramInstruction {

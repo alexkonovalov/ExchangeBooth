@@ -45,7 +45,7 @@ const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'exchange_booth-keypair.jso
   }
 }
 
-type IntstructionType = 0 | 1 | 2;
+type InstructionType = 0 | 1 | 2 | 3;
 
 /**
  * Borsh schema definition for greeting accounts
@@ -122,7 +122,7 @@ async function main() {
 
 
   var args = process.argv.slice(2);
-  const ix = parseInt(args[0]) as IntstructionType;
+  const ix = parseInt(args[0]) as InstructionType;
 
   await callProgram(connection, ix);
 }
@@ -141,7 +141,7 @@ async function doAirdrop (connection: Connection) {
   console.log('airdropResponse', airdropResponse);
 }
 
-async function callProgram (connection: Connection, ix: IntstructionType) {
+async function callProgram (connection: Connection, ix: InstructionType) {
   const config = await getConfig();
   let myKeypair = await createKeypairFromFile(config.keypair_path);
   let programKeypair = await createKeypairFromFile(PROGRAM_KEYPAIR_PATH);
@@ -312,7 +312,7 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
     data: Buffer.from(createEbIxData),
   });
 
-  const depositIxData = Buffer.concat([new Uint8Array([1]), getF64Buffer(3.14), getF64Buffer(2.71)]);
+  const depositIxData = Buffer.concat([new Uint8Array([1]), getF64Buffer(5), getF64Buffer(5)]);
 
   console.log('depositIxData', createEbIxData);
   const depositInstruction = new TransactionInstruction({
@@ -328,12 +328,12 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
     data: depositIxData,
   });
 
-  console.log('\\\\vault address::', vault1Key.toBase58());
-  console.log('\\\\vault2 address::', vault2Key.toBase58());
-  console.log('\\\\tokenAccount address::', tokenAccount.address.toBase58());
-  console.log('\\\\token2Account address::', token2Account.address.toBase58());
-  console.log('\\\\oracle address::', oracleKey.toBase58());
-  console.log('\\\\ebKey address::', ebKey.toBase58());
+  console.log('\\\\vault:', vault1Key.toBase58());
+  console.log('\\\\vault2:', vault2Key.toBase58());
+  console.log('\\\\tokenAccount:', tokenAccount.address.toBase58());
+  console.log('\\\\token2Account:', token2Account.address.toBase58());
+  console.log('\\\\oracle:', oracleKey.toBase58());
+  console.log('\\\\ebKey:', ebKey.toBase58());
 
   const closeEbInstruction = new TransactionInstruction({
     keys: [
@@ -352,6 +352,21 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
     data: Buffer.from(new Uint8Array([2])),
   });
 
+  const exchangeInstruction = new TransactionInstruction({
+    keys: [
+      { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
+      { pubkey: vault1Key, isSigner: false, isWritable: true },
+      { pubkey: vault2Key, isSigner: false, isWritable: true },
+      { pubkey: token2Account.address, isSigner: false, isWritable: true },
+      { pubkey: tokenAccount.address, isSigner: false, isWritable: true },
+      { pubkey: oracleKey, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    programId,
+    data:Buffer.concat([new Uint8Array([3]), getF64Buffer(1)]),
+  });
+
+
   switch (ix) {
     case 0: {
       trans.instructions = [createEbInstruction];
@@ -363,6 +378,10 @@ async function callProgram (connection: Connection, ix: IntstructionType) {
     }
     case 2: {
       trans.instructions = [closeEbInstruction];
+      break;
+    }
+    case 3: {
+      trans.instructions = [exchangeInstruction];
       break;
     }
   }
