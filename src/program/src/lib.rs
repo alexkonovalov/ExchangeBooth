@@ -4,7 +4,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint,
-    entrypoint::ProgramResult,
+    entrypoint::{ProgramResult, ProcessInstruction},
     program::{invoke_signed, invoke},
     msg,
     program_error::ProgramError,
@@ -31,6 +31,7 @@ pub struct OracleAccount {
     pub exchange_rate: f64,
 }
 
+const BOOTH_SPREAD:f64  = 0.05;
 
 // Declare and export the program's entrypoint
 entrypoint!(process_instruction);
@@ -38,7 +39,6 @@ entrypoint!(process_instruction);
 fn convert_to_u64(amount: f64) -> u64 {
     (amount * f64::powf(10.0.into(), 9.into())) as u64
 }
-
 
 // Program entrypoint's implementation
 pub fn process_instruction(
@@ -112,9 +112,9 @@ pub fn process_instruction(
             msg!("oracle_donor_to_receiver_key: {:?}",oracle_donor_to_receiver_key);
 
             if ff == &oracle_receiver_to_donor_key {
-                withdrawn_tokens = convert_to_u64(oracle.exchange_rate * deposited_amount);
+                withdrawn_tokens = convert_to_u64(oracle.exchange_rate * deposited_amount * (1.0 - BOOTH_SPREAD) );
             } else if ff == &oracle_donor_to_receiver_key {
-                withdrawn_tokens = convert_to_u64( deposited_amount / oracle.exchange_rate);
+                withdrawn_tokens = convert_to_u64( deposited_amount * (1.0 - BOOTH_SPREAD) / oracle.exchange_rate);
             } else {
                 panic!("incorrect oracle key");
             }
@@ -144,6 +144,53 @@ pub fn process_instruction(
                 )?,
                 &[token_program.clone(), donor_vault.clone(), receiver_account.clone(), user_ai.clone()],
                 &[&[user_ai.key.as_ref(), receivier_mint.as_ref(), &[donor_vault_bump]]],
+            )?;
+        },
+        Ok(ProgramInstruction::Withdraw {}) => {
+            let user_ai = next_account_info(accounts_iter)?;
+            let vault1 = next_account_info(accounts_iter)?;
+            let vault2 = next_account_info(accounts_iter)?;
+            let receiver1 = next_account_info(accounts_iter)?;
+            let receiver2 = next_account_info(accounts_iter)?;
+            let token_program = next_account_info(accounts_iter)?;
+
+            let vault1_content = Account::unpack(&vault1.data.borrow())?;
+            let vault2_content = Account::unpack(&vault2.data.borrow())?;
+
+            let (_vault1_key, vault1_bump) = Pubkey::find_program_address(
+                &[user_ai.key.as_ref(), vault1_content.mint.as_ref()],
+                program_id,
+            );
+
+            let (_vault2_key, vault2_bump) = Pubkey::find_program_address(
+                &[user_ai.key.as_ref(), vault2_content.mint.as_ref()],
+                program_id,
+            );
+
+            invoke_signed(
+                &transfer(
+                    token_program.key,
+                    vault1.key,
+                    receiver1.key,
+                    vault1.key,
+                    &[vault1.key],
+                    vault1_content.amount,
+                )?,
+                &[token_program.clone(), vault1.clone(), receiver1.clone()],
+                &[&[user_ai.key.as_ref(), vault1_content.mint.as_ref(), &[vault1_bump]]],
+            )?;
+
+            invoke_signed(
+                &transfer(
+                    token_program.key,
+                    vault2.key,
+                    receiver2.key,
+                    vault2.key,
+                    &[vault2.key],
+                    vault2_content.amount,
+                )?,
+                &[token_program.clone(), vault2.clone(), receiver2.clone()],
+                &[&[user_ai.key.as_ref(), vault2_content.mint.as_ref(), &[vault2_bump]]],
             )?;
         },
         Ok(ProgramInstruction::Deposit { amount, amount2  }) => {

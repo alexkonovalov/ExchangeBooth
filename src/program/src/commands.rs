@@ -16,6 +16,7 @@ pub enum ProgramInstruction {
     Exchange {
         amount: f64,
     },
+    Withdraw {}
 }
 
 impl ProgramInstruction {

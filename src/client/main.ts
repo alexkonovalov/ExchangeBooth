@@ -12,15 +12,30 @@ import {
     Transaction,
     sendAndConfirmTransaction,
 } from '@solana/web3.js';
-import { createMint, getAccount, getMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID, } from '@solana/spl-token';
+import { createMint,
+    getAccount,
+    getMint,
+    getOrCreateAssociatedTokenAccount,
+    burn,
+    mintTo,
+    closeAccount,
+    TOKEN_PROGRAM_ID,
+    transfer
+} from '@solana/spl-token';
 
 import * as borsh from 'borsh';
 import os from 'os';
+
 import fs from 'mz/fs';
 import path from 'path';
 import yaml from 'yaml';
 import { getMessageVecBuffer, getF64Buffer } from './commands';
+import * as yargs from 'yargs'
+ import { hideBin } from "yargs/helpers";
 import BN from 'bn.js';
+
+// const yargs = require('yargs/yargs');
+// const { hideBin } = require('yargs/helpers');
 
 const PROGRAM_PATH = path.resolve(__dirname, '../../dist/program');
 const KEYS_PATH = path.resolve(__dirname, '../../dist/keys');
@@ -45,7 +60,7 @@ const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'exchange_booth-keypair.jso
   }
 }
 
-type InstructionType = 0 | 1 | 2 | 3;
+type InstructionType = 0 | 1 | 2 | 3 | 4;
 
 /**
  * Borsh schema definition for greeting accounts
@@ -99,15 +114,6 @@ class Assignable {
 class Test extends Assignable { }
 
 async function main() {
-  //const value = new Test({ x: 255, y: 20, z: '123', q: [1, 2, 3] });
-  //const schema = new Map([[Test, { kind: 'struct', fields: [['x', 'u8'], ['y', 'u64'], ['z', 'string'], ['q', [3]]] }]]);
-
-  // const value = new Test({ x: 255 });
-  // const schema = new Map([[Test, { kind: 'struct', fields: [['x', 'u32']] }]]);
-
-  // const buffer = borsh.serialize(schema, value);
-  // console.log('buffer::', buffer);
-
   console.log("Running solana RPC program...");
 
   const config = await getConfig();
@@ -120,11 +126,43 @@ async function main() {
   const version = await connection.getVersion();
   console.log('Connection to cluster established:', config.json_rpc_url, version);
 
+  const args = yargs.default(hideBin(process.argv))
+      .option('ix', {
+        description: 'Run instruction',
+        type: 'number',
+        requiresArg: true,
+        demandOption: false,
+      })
+      .option('tokens:clear', {
+        description: 'Remove mint and token accounts',
+        type: 'boolean',
+        requiresArg: false,
+        demandOption: false,
+      })
+      .option('tokens:create', {
+        description: 'Create mint and token accounts',
+        type: 'boolean',
+        requiresArg: false,
+        demandOption: false,
+      })
+      .parseSync();
 
-  var args = process.argv.slice(2);
-  const ix = parseInt(args[0]) as InstructionType;
-
-  await callProgram(connection, ix);
+  switch (true) {
+    case args.ix !== undefined:
+      await callProgram(connection, args.ix as InstructionType);
+      break;
+    case args['tokens:create']: 
+      await createTokens(connection);
+      break;
+    case args['mints:create']:
+      await createMints(connection);
+      break;
+    case args['tokens:clear']:
+      await removeTokens(connection);
+      break;
+    default:
+      throw Error("No args provided");
+  }
 }
 
 async function doAirdrop (connection: Connection) {
@@ -141,6 +179,137 @@ async function doAirdrop (connection: Connection) {
   console.log('airdropResponse', airdropResponse);
 }
 
+async function removeTokens(connection: Connection) {
+  const config = await getConfig();
+  let myKeypair = await createKeypairFromFile(config.keypair_path);
+  let mint1Keypair = await createKeypairFromFile(MINT1_SO_PATH);
+  let mint2Keypair = await createKeypairFromFile(MINT2_SO_PATH);
+
+  const tokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    myKeypair,
+    mint1Keypair.publicKey,
+    myKeypair.publicKey
+  );
+
+  const token2Account = await getOrCreateAssociatedTokenAccount(
+    connection,
+    myKeypair,
+    mint2Keypair.publicKey,
+    myKeypair.publicKey
+  );
+
+  await burn(
+    connection,
+    myKeypair,
+    tokenAccount.address,
+    mint1Keypair.publicKey,
+    myKeypair.publicKey,
+    tokenAccount.amount
+  );
+
+  await burn(
+    connection,
+    myKeypair,
+    token2Account.address,
+    mint2Keypair.publicKey,
+    myKeypair.publicKey,
+    token2Account.amount
+  );
+
+  await closeAccount(
+    connection,
+    myKeypair,
+    tokenAccount.address,
+    myKeypair.publicKey,
+    myKeypair.publicKey
+  );
+
+  await closeAccount(
+    connection,
+    myKeypair,
+    token2Account.address,
+    myKeypair.publicKey,
+    myKeypair.publicKey,
+  );
+
+  console.log('\\\\tokenAccount:', tokenAccount.address.toBase58());
+  console.log('\\\\token2Account:', token2Account.address.toBase58());
+  console.log('\\\\mint1Keypair:', mint1Keypair.publicKey.toBase58());
+  console.log('\\\\mint2Keypair:', mint2Keypair.publicKey.toBase58());
+}
+
+async function createMints(connection: Connection) {
+  const config = await getConfig();
+  let myKeypair = await createKeypairFromFile(config.keypair_path);
+  let mint1Keypair = await createKeypairFromFile(MINT1_SO_PATH);
+  let mint2Keypair = await createKeypairFromFile(MINT2_SO_PATH);
+
+  await createMint(
+    connection,
+    myKeypair,
+    myKeypair.publicKey,
+    myKeypair.publicKey,
+    9,
+    mint1Keypair
+  );
+
+  await createMint(
+    connection,
+    myKeypair,
+    myKeypair.publicKey,
+    myKeypair.publicKey,
+    9,
+    mint2Keypair
+  );
+  console.log('\\\\mint1Keypair:', mint1Keypair.publicKey.toBase58());
+  console.log('\\\\mint2Keypair:', mint2Keypair.publicKey.toBase58());
+}
+
+async function createTokens(connection: Connection) {
+  const config = await getConfig();
+  let myKeypair = await createKeypairFromFile(config.keypair_path);
+  let mint1Keypair = await createKeypairFromFile(MINT1_SO_PATH);
+  let mint2Keypair = await createKeypairFromFile(MINT2_SO_PATH);
+
+  const tokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    myKeypair,
+    mint1Keypair.publicKey,
+    myKeypair.publicKey
+  );
+
+  const token2Account = await getOrCreateAssociatedTokenAccount(
+    connection,
+    myKeypair,
+    mint2Keypair.publicKey,
+    myKeypair.publicKey
+  );
+
+  await mintTo(
+    connection,
+    myKeypair,
+    mint1Keypair.publicKey,
+    tokenAccount.address,
+    myKeypair.publicKey,
+    10 * Math.pow(10, 9)
+  );
+
+  await mintTo(
+    connection,
+    myKeypair,
+    mint2Keypair.publicKey,
+    token2Account.address,
+    myKeypair.publicKey,
+    10 * Math.pow(10, 9)
+  );
+
+  console.log('\\\\tokenAccount:', tokenAccount.address.toBase58());
+  console.log('\\\\token2Account:', token2Account.address.toBase58());
+ console.log('\\\\mint1Keypair:', mint1Keypair.publicKey.toBase58());
+ console.log('\\\\mint2Keypair:', mint2Keypair.publicKey.toBase58());
+}
+
 async function callProgram (connection: Connection, ix: InstructionType) {
   const config = await getConfig();
   let myKeypair = await createKeypairFromFile(config.keypair_path);
@@ -148,8 +317,6 @@ async function callProgram (connection: Connection, ix: InstructionType) {
   let mint1Keypair = await createKeypairFromFile(MINT1_SO_PATH);
   let mint2Keypair = await createKeypairFromFile(MINT2_SO_PATH);
   let programId = programKeypair.publicKey;
-  console.log('programId', programId);
-
   
   let buffer = Buffer.alloc(8);
   let data = new Uint8Array([44, 55, 66, 777, 1, 34, 9, 78]);
@@ -201,37 +368,17 @@ async function callProgram (connection: Connection, ix: InstructionType) {
     data: commandData,
   });
 
-  if (ix === 0) {
-    await createMint(
-      connection,
-      myKeypair,
-      myKeypair.publicKey,
-      myKeypair.publicKey,
-      9,
-      mint1Keypair
-    );
-  
-    await createMint(
-      connection,
-      myKeypair,
-      myKeypair.publicKey,
-      myKeypair.publicKey,
-      9,
-      mint2Keypair
-    );
-  }
+  // let mintInfo = await getMint(
+  //   connection,
+  //   mint1Keypair.publicKey,
+  // );
+  // console.log('mint info 1 ---', mintInfo);
 
-  let mintInfo = await getMint(
-    connection,
-    mint1Keypair.publicKey,
-  );
-  console.log('mint info 1 ---', mintInfo);
-
-  let mint2Info = await getMint(
-    connection,
-    mint2Keypair.publicKey,
-  );
-  console.log('mint2Info ---', mint2Info);
+  // let mint2Info = await getMint(
+  //   connection,
+  //   mint2Keypair.publicKey,
+  // );
+  // console.log('mint2Info ---', mint2Info);
 
   const tokenAccount = await getOrCreateAssociatedTokenAccount(
     connection,
@@ -246,26 +393,6 @@ async function callProgram (connection: Connection, ix: InstructionType) {
     mint2Keypair.publicKey,
     myKeypair.publicKey
   );
-
-  if (ix === 0) {
-    await mintTo(
-      connection,
-      myKeypair,
-      mint1Keypair.publicKey,
-      tokenAccount.address,
-      myKeypair.publicKey,
-      10 * Math.pow(10, 9)
-    );
-
-    await mintTo(
-      connection,
-      myKeypair,
-      mint2Keypair.publicKey,
-      token2Account.address,
-      myKeypair.publicKey,
-      10 * Math.pow(10, 9)
-    );
-  }
 
   const oracleKey = (await PublicKey.findProgramAddress(
     [
@@ -355,17 +482,29 @@ async function callProgram (connection: Connection, ix: InstructionType) {
   const exchangeInstruction = new TransactionInstruction({
     keys: [
       { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
-      { pubkey: vault1Key, isSigner: false, isWritable: true },
       { pubkey: vault2Key, isSigner: false, isWritable: true },
-      { pubkey: token2Account.address, isSigner: false, isWritable: true },
+      { pubkey: vault1Key, isSigner: false, isWritable: true },
       { pubkey: tokenAccount.address, isSigner: false, isWritable: true },
+      { pubkey: token2Account.address, isSigner: false, isWritable: true },
       { pubkey: oracleKey, isSigner: false, isWritable: false },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ],
     programId,
-    data:Buffer.concat([new Uint8Array([3]), getF64Buffer(1)]),
+    data:Buffer.concat([new Uint8Array([3]), getF64Buffer(2)]),
   });
 
+  const withdrawInstruction = new TransactionInstruction({
+    keys: [
+      { pubkey: myKeypair.publicKey, isSigner: true, isWritable: true },
+      { pubkey: vault1Key, isSigner: false, isWritable: true },
+      { pubkey: vault2Key, isSigner: false, isWritable: true },
+      { pubkey: tokenAccount.address, isSigner: false, isWritable: true },
+      { pubkey: token2Account.address, isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    programId,
+    data:Buffer.concat([new Uint8Array([4])]),
+  });
 
   switch (ix) {
     case 0: {
@@ -382,6 +521,10 @@ async function callProgram (connection: Connection, ix: InstructionType) {
     }
     case 3: {
       trans.instructions = [exchangeInstruction];
+      break;
+    }
+    case 4: {
+      trans.instructions = [withdrawInstruction];
       break;
     }
   }
