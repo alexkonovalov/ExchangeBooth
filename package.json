@@ -12,6 +12,7 @@
     "booth:redeploy": "npm run clean && npm run build:program && npm run keygen && npm run deploy",
     "booth:prepare": "npm run booth:redeploy && npm run start -- --mints:create && npm run start -- --tokens:create && npm run start -- --ix=0 && npm run start -- --ix=1", 
     "booth:rebuild": "npm run build:program && npm run deploy",
+    "booth:client": "npm run keygen && npm run start -- --mints:create && npm run start -- --tokens:create && npm run start -- --ix=0 && npm run start -- --ix=1",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
