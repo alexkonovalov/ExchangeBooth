@@ -10,7 +10,7 @@
     "keygen": "solana-keygen new -o dist/keys/mint1.so --no-bip39-passphrase --force; solana-keygen new -o dist/keys/mint2.so --no-bip39-passphrase --force;",
     "build:program": "cargo build-bpf --manifest-path=./src/program/Cargo.toml --bpf-out-dir=dist/program",
     "booth:redeploy": "npm run clean && npm run build:program && npm run keygen && npm run deploy",
-    "booth:prepare": "npm run booth:redeploy && npm run start -- --mints:create && npm run start -- --tokens:create && npm run start -- --ix=0 && npm run start -- --ix=1", 
+    "booth:prepare": "npm run booth:redeploy && npm run start -- --mints:create && npm run start -- --tokens:create && npm run start -- --ix=0 && npm run start -- --ix=1",
     "booth:rebuild": "npm run build:program && npm run deploy",
     "booth:client": "npm run keygen && npm run start -- --mints:create && npm run start -- --tokens:create && npm run start -- --ix=0 && npm run start -- --ix=1",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -36,7 +36,7 @@
     "eslint": "^7.12.1",
     "eslint-config-prettier": "^6.15.0",
     "eslint-plugin-prettier": "^4.0.0",
-    "prettier": "^2.1.2",
+    "prettier": "2.6.2",
     "start-server-and-test": "^1.11.6",
     "ts-node": "^10.0.0",
     "typescript": "^4.0.5",
