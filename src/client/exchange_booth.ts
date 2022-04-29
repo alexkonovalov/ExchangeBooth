@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 import {
     Keypair,
     Connection,
@@ -34,8 +31,13 @@ import * as yargs from 'yargs'
 import { hideBin } from "yargs/helpers";
 import BN from 'bn.js';
 
-
-export type InstructionType = 0 | 1 | 2 | 3 | 4;
+export enum Instruction {
+    Initialize = 0,
+    Deposit = 1, 
+    Close = 2, 
+    Exchange = 3, 
+    Withdraw = 4, 
+}
 
 export type CreateEbParams = { 
     ownerKey: PublicKey,

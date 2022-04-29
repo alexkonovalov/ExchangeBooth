@@ -16,7 +16,7 @@ import * as yargs from 'yargs'
 
 import { closeAssociatedToken, mintAssociatedToken } from './service';
 import { createKeypairFromFile, getConfig} from './helpers';
-import { EB_PDA_SEED_GENERATORS, ExchangeBoothProgram, InstructionType } from './exchange_booth';
+import { EB_PDA_SEED_GENERATORS, ExchangeBoothProgram, Instruction } from './exchange_booth';
 import { Key } from 'mz/readline';
 
 export class Processor {
@@ -32,7 +32,7 @@ export class Processor {
         this.connection = connection;
     }
 
-    async process(ix: InstructionType, ownerKeypair: Keypair): Promise<Transaction> {
+    async process(ix: Instruction, ownerKeypair: Keypair): Promise<Transaction> {
         const mint1PK = this.mint1Key;
         const mint2PK = this.mint2Key;
         const programId = this.programId;
@@ -67,7 +67,7 @@ export class Processor {
         let transaction = new Transaction();
 
         switch (ix) {
-            case 0: {
+            case Instruction.Initialize: {
             const oracleKey = (await PublicKey.findProgramAddress(
                 EB_PDA_SEED_GENERATORS.ORACLE(mint1PK, mint2PK, ownerKeypair.publicKey),
                 programId
@@ -87,7 +87,7 @@ export class Processor {
                 tokenRate: 0.5
             })];
 
-            console.log('INIT EXCHANGE BOOTH. ADDRESSES:', vault1Key.toBase58());
+            console.log('INITIALISED EXCHANGE BOOTH. ADDRESSES:', vault1Key.toBase58());
             console.log('vault:', vault1Key.toBase58());
             console.log('vault2:', vault2Key.toBase58());
             console.log('tokenAccount:', tokenAccount.address.toBase58());
@@ -97,7 +97,7 @@ export class Processor {
 
             break;
             }
-            case 1: {
+            case Instruction.Deposit: {
             transaction.instructions = [ebProgram.deposit({ 
                 ownerKey: ownerKeypair.publicKey,
                 vault1Key,
@@ -109,7 +109,7 @@ export class Processor {
             })];
             break;
             }
-            case 2: {
+            case Instruction.Close: {
             const oracleKey = (await PublicKey.findProgramAddress(
                 EB_PDA_SEED_GENERATORS.ORACLE(mint1PK, mint2PK, ownerKeypair.publicKey),
                 programId
@@ -131,7 +131,7 @@ export class Processor {
             })];
             break;
             }
-            case 3: {
+            case Instruction.Exchange: {
             const oracleKey = (await PublicKey.findProgramAddress(
                 EB_PDA_SEED_GENERATORS.ORACLE(mint1PK, mint2PK, ownerKeypair.publicKey),
                 programId
@@ -147,7 +147,7 @@ export class Processor {
             })];
             break;
             }
-            case 4: {
+            case Instruction.Withdraw: {
             transaction.instructions = [ebProgram.withdrow({
                 ownerKey: ownerKeypair.publicKey,
                 vault1Key,

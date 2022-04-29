@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 import {
     Connection,
     sendAndConfirmTransaction,
@@ -15,7 +12,7 @@ import * as yargs from 'yargs'
 
 import { closeAssociatedToken, mintAssociatedToken } from './service';
 import { createKeypairFromFile, getConfig} from './helpers';
-import { InstructionType } from './exchange_booth';
+import { Instruction } from './exchange_booth';
 import { Processor } from './processor';
 
 
@@ -72,7 +69,7 @@ async function main() {
       let programId = programKeypair.publicKey;
 
       const processor = new Processor(mint1Keypair.publicKey, mint2Keypair.publicKey, programId, connection);
-      const transaction = await processor.process(args.ix as InstructionType, myKeypair);
+      const transaction = await processor.process(args.ix as Instruction, myKeypair);
 
       await sendAndConfirmTransaction(
         connection,
@@ -81,7 +78,7 @@ async function main() {
            myKeypair
         ],
      );
-     
+
       break;
     case args['airdrop']: 
       const sig = await connection.requestAirdrop(
