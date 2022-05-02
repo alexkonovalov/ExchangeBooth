@@ -6,13 +6,13 @@
   "scripts": {
     "start": "ts-node src/client/main.ts",
     "clean": "rm -rf dist",
-    "deploy": "solana program deploy dist/program/exchange_booth.so",
-    "keygen": "solana-keygen new -o dist/keys/mint1.so --no-bip39-passphrase --force; solana-keygen new -o dist/keys/mint2.so --no-bip39-passphrase --force;",
-    "build:program": "cargo build-bpf --manifest-path=./src/program/Cargo.toml --bpf-out-dir=dist/program",
-    "booth:redeploy": "npm run clean && npm run build:program && npm run keygen && npm run deploy",
-    "booth:prepare": "npm run booth:redeploy && npm run start -- --mints:create && npm run start -- --tokens:create && npm run start -- --ix=0 && npm run start -- --ix=1",
-    "booth:rebuild": "npm run build:program && npm run deploy",
-    "booth:client": "npm run keygen && npm run start -- --mints:create && npm run start -- --tokens:create && npm run start -- --ix=0 && npm run start -- --ix=1",
+    "mints:keys": "solana-keygen new -o dist/keys/mint1.so --no-bip39-passphrase --force; solana-keygen new -o dist/keys/mint2.so --no-bip39-passphrase --force;",
+    "program:deploy": "solana program deploy dist/program/exchange_booth.so",
+    "program:build": "cargo build-bpf --manifest-path=./src/program/Cargo.toml --bpf-out-dir=dist/program",
+    "program:redeploy": "npm run program:build && npm run program:deploy",
+    "client:prepare": "npm run mints:keys && npm run start -- --mints:create && npm run start -- --tokens:create",
+    "client:cycle": "npm run start -- --ix=0 && npm run start -- --ix=1 && npm run start -- --ix=3 && npm run start -- --ix=4 && npm run start -- --ix=2",
+    "booth:cycle": "npm run clean && npm run program:redeploy && npm run client:prepare && npm run client:cycle",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
