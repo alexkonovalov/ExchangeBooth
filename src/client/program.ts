@@ -94,7 +94,7 @@ export class ExchangeBoothProgram {
         this.programId = programId;
     }
 
-    public create({
+    public initialize({
         ownerKey: payerKey,
         ebKey,
         vault1Key,

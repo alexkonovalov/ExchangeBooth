@@ -1,22 +1,12 @@
-
-use {
-    borsh::BorshDeserialize, solana_program::program_error::ProgramError,
-};
+use {borsh::BorshDeserialize, solana_program::program_error::ProgramError};
 
 #[derive(Debug, PartialEq, BorshDeserialize)]
 pub enum ProgramInstruction {
-    InitializeExchangeBooth {
-        exchange_rate: f64,
-    },
-    Deposit {
-        amount: f64,
-        amount2: f64,
-    },
+    InitializeExchangeBooth { exchange_rate: f64 },
+    Deposit { amount: f64, amount2: f64 },
     CloseExchangeBooth {},
-    Exchange {
-        amount: f64,
-    },
-    Withdraw {}
+    Exchange { amount: f64 },
+    Withdraw {},
 }
 
 impl ProgramInstruction {
@@ -27,7 +17,7 @@ impl ProgramInstruction {
 
         match payload {
             Ok(ix) => Ok(ix),
-            _ => Err(ProgramError::InvalidArgument)
+            _ => Err(ProgramError::InvalidArgument),
         }
     }
 }

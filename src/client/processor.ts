@@ -99,7 +99,7 @@ export class Processor {
                 console.log("oracle:", oracleKey.toBase58());
                 console.log("ebKey:", ebKey.toBase58());
 
-                return program.create({
+                return program.initialize({
                     ownerKey: ownerKeypair.publicKey,
                     ebKey,
                     vault1Key,
