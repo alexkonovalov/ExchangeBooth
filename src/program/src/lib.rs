@@ -1,32 +1,36 @@
+use crate::commands::ProgramInstruction;
+use crate::error::ExchangeBoothError;
 use borsh::{BorshDeserialize, BorshSerialize};
 use core::panic;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint,
-    entrypoint::{ProcessInstruction, ProgramResult},
+    entrypoint::ProgramResult,
     log::sol_log_compute_units,
     msg,
     program::{invoke, invoke_signed},
     program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
-    system_instruction::{self, SystemError},
+    //  as RENT_PROGRAM_ID,
+    system_instruction::{self},
+    system_program::ID as SYSTEM_PROGRAM_ID,
+    sysvar,
     sysvar::{rent::Rent, Sysvar},
 };
 use spl_token::{
     instruction::{close_account, initialize_account, transfer},
     state::Account,
+    ID as TOKEN_PROGRAM_ID,
 };
-use std::str::FromStr;
-
-use crate::commands::ProgramInstruction;
 pub mod commands;
+pub mod error;
 
 /// Define the type of state stored in accounts
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct ExchangeBoothAccount {
     pub vault1: Pubkey,
-    pub donor_vault: Pubkey,
+    pub vault2: Pubkey,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -393,14 +397,57 @@ pub fn process_instruction(
             let mint1 = next_account_info(accounts_iter)?;
             let mint2 = next_account_info(accounts_iter)?;
             let vault1 = next_account_info(accounts_iter)?;
-            let donor_vault = next_account_info(accounts_iter)?;
+            let vault2 = next_account_info(accounts_iter)?;
             let oracle_ai = next_account_info(accounts_iter)?;
             let token_program = next_account_info(accounts_iter)?;
             let rent_program = next_account_info(accounts_iter)?;
-            let (_vault1_key, bump) = Pubkey::find_program_address(
+
+            let (vault1_key, vault1_bump) = Pubkey::find_program_address(
                 &[user_ai.key.as_ref(), mint1.key.as_ref()],
                 program_id,
             );
+
+            let (vault2_key, vault2_bump) = Pubkey::find_program_address(
+                &[user_ai.key.as_ref(), mint2.key.as_ref()],
+                program_id,
+            );
+
+            let (oracle_key, oracle_bump) = Pubkey::find_program_address(
+                &[user_ai.key.as_ref(), mint1.key.as_ref(), mint2.key.as_ref()],
+                program_id,
+            );
+
+            let (eb_key, eb_bump) =
+                Pubkey::find_program_address(&[oracle_ai.key.as_ref()], program_id);
+
+            if vault1_key != *vault1.key {
+                msg!("Invalid account address for Vault 1");
+                return Err(ExchangeBoothError::InvalidAccountAddress.into());
+            }
+            if vault2_key != *vault2.key {
+                msg!("Invalid account address for Vault 2");
+                return Err(ExchangeBoothError::InvalidAccountAddress.into());
+            }
+            if oracle_key != *oracle_ai.key {
+                msg!("Invalid account address for Vault 2");
+                return Err(ExchangeBoothError::InvalidAccountAddress.into());
+            }
+            if eb_key != *eb_ai.key {
+                msg!("Invalid account address for Vault 2");
+                return Err(ExchangeBoothError::InvalidAccountAddress.into());
+            }
+            if SYSTEM_PROGRAM_ID != *system_program.key {
+                msg!("Invalid account address for System Program");
+                return Err(ExchangeBoothError::InvalidAccountAddress.into());
+            }
+            if TOKEN_PROGRAM_ID != *token_program.key {
+                msg!("Invalid account address for System Program");
+                return Err(ExchangeBoothError::InvalidAccountAddress.into());
+            }
+            if sysvar::rent::id() != *rent_program.key {
+                msg!("Invalid account address for Rent Program");
+                return Err(ExchangeBoothError::InvalidAccountAddress.into());
+            }
 
             invoke_signed(
                 &system_instruction::create_account(
@@ -411,7 +458,7 @@ pub fn process_instruction(
                     token_program.key,
                 ),
                 &[user_ai.clone(), system_program.clone(), vault1.clone()],
-                &[&[user_ai.key.as_ref(), mint1.key.as_ref(), &[bump]]],
+                &[&[user_ai.key.as_ref(), mint1.key.as_ref(), &[vault1_bump]]],
             )?;
 
             invoke_signed(
@@ -422,61 +469,37 @@ pub fn process_instruction(
                     mint1.clone(),
                     rent_program.clone(),
                 ],
-                &[&[user_ai.key.as_ref(), mint1.key.as_ref(), &[bump]]],
+                &[&[user_ai.key.as_ref(), mint1.key.as_ref(), &[vault1_bump]]],
             )?;
-
-            let (_vault2_key, bump) = Pubkey::find_program_address(
-                &[user_ai.key.as_ref(), mint2.key.as_ref()],
-                program_id,
-            );
 
             invoke_signed(
                 &system_instruction::create_account(
                     user_ai.key,
-                    donor_vault.key,
+                    vault2.key,
                     Rent::get()?.minimum_balance(165),
                     165,
                     token_program.key,
                 ),
-                &[user_ai.clone(), system_program.clone(), donor_vault.clone()],
-                &[&[user_ai.key.as_ref(), mint2.key.as_ref(), &[bump]]],
+                &[user_ai.clone(), system_program.clone(), vault2.clone()],
+                &[&[user_ai.key.as_ref(), mint2.key.as_ref(), &[vault2_bump]]],
             )?;
 
             invoke_signed(
-                &initialize_account(
-                    token_program.key,
-                    donor_vault.key,
-                    mint2.key,
-                    donor_vault.key,
-                )?,
+                &initialize_account(token_program.key, vault2.key, mint2.key, vault2.key)?,
                 &[
                     token_program.clone(),
-                    donor_vault.clone(),
+                    vault2.clone(),
                     mint2.clone(),
                     rent_program.clone(),
                 ],
-                &[&[user_ai.key.as_ref(), mint2.key.as_ref(), &[bump]]],
+                &[&[user_ai.key.as_ref(), mint2.key.as_ref(), &[vault2_bump]]],
             )?;
-
-            let (_oracle_key, oracle_bump) = Pubkey::find_program_address(
-                &[user_ai.key.as_ref(), mint1.key.as_ref(), mint2.key.as_ref()],
-                program_id,
-            );
-
-            let (_eb_key, eb_bump) =
-                Pubkey::find_program_address(&[oracle_ai.key.as_ref()], program_id);
-
-            msg!("--------oracle key {:?}", oracle_ai.key);
-            msg!("--------oracle bump {:?}", oracle_bump);
-            msg!("--------eb key {:?}", eb_ai.key);
-            msg!("--------eb bump {:?}", eb_bump);
-            msg!("-------_exchange rate {:?}", exchange_rate);
 
             invoke_signed(
                 &system_instruction::create_account(
                     user_ai.key,
                     oracle_ai.key,
-                    Rent::get()?.minimum_balance(64),
+                    Rent::get()?.minimum_balance(8),
                     8,
                     program_id,
                 ),
@@ -503,7 +526,7 @@ pub fn process_instruction(
 
             let mut booth = ExchangeBoothAccount::try_from_slice(&eb_ai.data.borrow())?;
             booth.vault1 = *vault1.key;
-            booth.donor_vault = *donor_vault.key;
+            booth.vault2 = *vault2.key;
 
             booth.serialize(&mut *eb_ai.data.borrow_mut())?;
 
@@ -511,45 +534,10 @@ pub fn process_instruction(
             oracle.exchange_rate = exchange_rate;
             oracle.serialize(&mut *oracle_ai.data.borrow_mut())?;
         }
-        _ => {
-            msg!("+++++++ NOT init exchange booth");
-        }
-    }
-
-    msg!("COMPUTE UNITS: {:?}", sol_log_compute_units());
-
-    // The account must be owned by the program in order to modify its data
-    // if account.owner != program_id {
-    //     msg!("Greeted account does not have the correct program id");
-    //     return Err(ProgramError::IncorrectProgramId);
-    // }
-
-    // Increment and store the number of times the account has been greeted
-    // let mut greeting_account = GreetingAccount::try_from_slice(&account.data.borrow())?;
-
-    // if greeting_account.counter == 0 {
-    //     greeting_account.authority = Pubkey::from_str("DGUWh9zsVv3XmFGZxkTpdaJUQkkXvUUoWHundLsPjxMH").expect("bad authority pubkey");
-    // }
-
-    // greeting_account.counter += 1;
-    //  greeting_account.data = instruction_data;
-
-    let mut fuf: [u8; 8] = [0; 8];
-
-    match *instruction_data {
-        [b1, b2, b3, b4, b5, b6, b7, b8] => {
-            fuf = [b1, b2, b3, b4, b5, b6, b7, b8];
-        }
         _ => {}
     }
 
-    // greeting_account.data = fuf;
-
-    // msg!("greeting account END:: {:?}", greeting_account);
-
-    // greeting_account.serialize(&mut &mut account.data.borrow_mut()[..])?;
-
-    // msg!("Greeted {} time(s)!", greeting_account.counter);
+    msg!("COMPUTE UNITS: {:?}", sol_log_compute_units());
 
     Ok(())
 }
