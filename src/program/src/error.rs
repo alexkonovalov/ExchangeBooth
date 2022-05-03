@@ -20,8 +20,8 @@ pub enum ExchangeBoothError {
     // InvalidInstructionInput,
     // #[error("Invalid account data.")]
     // InvalidAccountData,
-    // #[error("Default error.")]
-    // DefaultError,
+    #[error("Compute error.")]
+    ComputeError,
     // #[error("Instruction not implemented.")]
     // NotImplemented,
     // #[error("Insufficient funds.")]

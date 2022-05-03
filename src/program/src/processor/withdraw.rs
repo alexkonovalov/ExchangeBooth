@@ -1,11 +1,14 @@
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    msg,
     program::invoke_signed,
     program_pack::Pack,
     pubkey::Pubkey,
 };
-use spl_token::{instruction::transfer, state::Account};
+use spl_token::{instruction::transfer, state::Account, ID as TOKEN_PROGRAM_ID};
+
+use crate::error::ExchangeBoothError;
 
 pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
@@ -19,15 +22,39 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let vault1_content = Account::unpack(&vault1.data.borrow())?;
     let vault2_content = Account::unpack(&vault2.data.borrow())?;
 
-    let (_vault1_key, vault1_bump) = Pubkey::find_program_address(
+    let receiver1_content = Account::unpack(&receiver1.data.borrow())?;
+    let receiver2_content = Account::unpack(&receiver2.data.borrow())?;
+
+    let (vault1_key, vault1_bump) = Pubkey::find_program_address(
         &[user_ai.key.as_ref(), vault1_content.mint.as_ref()],
         program_id,
     );
 
-    let (_vault2_key, vault2_bump) = Pubkey::find_program_address(
+    let (vault2_key, vault2_bump) = Pubkey::find_program_address(
         &[user_ai.key.as_ref(), vault2_content.mint.as_ref()],
         program_id,
     );
+
+    if vault1_key != *vault1.key {
+        msg!("Invalid account address for Vault 1");
+        return Err(ExchangeBoothError::InvalidAccountAddress.into());
+    }
+    if vault2_key != *vault2.key {
+        msg!("Invalid account address for Vault 2");
+        return Err(ExchangeBoothError::InvalidAccountAddress.into());
+    }
+    if TOKEN_PROGRAM_ID != *token_program.key {
+        msg!("Invalid account address for System Program");
+        return Err(ExchangeBoothError::InvalidAccountAddress.into());
+    }
+    if vault1_content.mint != receiver1_content.mint {
+        msg!("Mint of receiever 1 does not match with vault 1");
+        return Err(ExchangeBoothError::InvalidAccountAddress.into());
+    }
+    if vault2_content.mint != receiver2_content.mint {
+        msg!("Mint of receiever 2 does not match with vault 2");
+        return Err(ExchangeBoothError::InvalidAccountAddress.into());
+    }
 
     invoke_signed(
         &transfer(

@@ -30,9 +30,11 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
     let token_program = next_account_info(accounts_iter)?;
     let rent_program = next_account_info(accounts_iter)?;
 
+    //todo user shouldnt be in seeds for token
     let (vault1_key, vault1_bump) =
         Pubkey::find_program_address(&[user_ai.key.as_ref(), mint1.key.as_ref()], program_id);
 
+    //todo user shouldnt be in seeds for token
     let (vault2_key, vault2_bump) =
         Pubkey::find_program_address(&[user_ai.key.as_ref(), mint2.key.as_ref()], program_id);
 
@@ -52,11 +54,11 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
     if oracle_key != *oracle_ai.key {
-        msg!("Invalid account address for Vault 2");
+        msg!("Invalid account address for Oracle");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
     if eb_key != *eb_ai.key {
-        msg!("Invalid account address for Vault 2");
+        msg!("Invalid account address for Exchange Booth");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
     if SYSTEM_PROGRAM_ID != *system_program.key {
@@ -64,7 +66,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
     if TOKEN_PROGRAM_ID != *token_program.key {
-        msg!("Invalid account address for System Program");
+        msg!("Invalid account address for Token Program");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
     if sysvar::rent::id() != *rent_program.key {
