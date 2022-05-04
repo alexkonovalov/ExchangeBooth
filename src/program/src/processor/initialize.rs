@@ -19,7 +19,7 @@ use spl_token::{instruction::initialize_account, ID as TOKEN_PROGRAM_ID};
 pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
 
-    let user_ai = next_account_info(accounts_iter)?;
+    let admin_ai = next_account_info(accounts_iter)?;
     let eb_ai = next_account_info(accounts_iter)?;
     let system_program = next_account_info(accounts_iter)?;
     let mint1 = next_account_info(accounts_iter)?;
@@ -30,20 +30,23 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
     let token_program = next_account_info(accounts_iter)?;
     let rent_program = next_account_info(accounts_iter)?;
 
-    //todo user shouldnt be in seeds for token
-    let (vault1_key, vault1_bump) =
-        Pubkey::find_program_address(&[user_ai.key.as_ref(), mint1.key.as_ref()], program_id);
-
-    //todo user shouldnt be in seeds for token
-    let (vault2_key, vault2_bump) =
-        Pubkey::find_program_address(&[user_ai.key.as_ref(), mint2.key.as_ref()], program_id);
-
     let (oracle_key, oracle_bump) = Pubkey::find_program_address(
-        &[user_ai.key.as_ref(), mint1.key.as_ref(), mint2.key.as_ref()],
+        &[
+            admin_ai.key.as_ref(),
+            mint1.key.as_ref(),
+            mint2.key.as_ref(),
+        ],
         program_id,
     );
 
+    // so far oracle and exchange booth are 1 to 1 connected
     let (eb_key, eb_bump) = Pubkey::find_program_address(&[oracle_ai.key.as_ref()], program_id);
+
+    let (vault1_key, vault1_bump) =
+        Pubkey::find_program_address(&[eb_ai.key.as_ref(), mint1.key.as_ref()], program_id);
+
+    let (vault2_key, vault2_bump) =
+        Pubkey::find_program_address(&[eb_ai.key.as_ref(), mint2.key.as_ref()], program_id);
 
     if vault1_key != *vault1.key {
         msg!("Invalid account address for Vault 1");
@@ -76,14 +79,14 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
 
     invoke_signed(
         &system_instruction::create_account(
-            user_ai.key,
+            admin_ai.key,
             vault1.key,
             Rent::get()?.minimum_balance(165),
             165,
             token_program.key,
         ),
-        &[user_ai.clone(), system_program.clone(), vault1.clone()],
-        &[&[user_ai.key.as_ref(), mint1.key.as_ref(), &[vault1_bump]]],
+        &[admin_ai.clone(), system_program.clone(), vault1.clone()],
+        &[&[admin_ai.key.as_ref(), mint1.key.as_ref(), &[vault1_bump]]],
     )?;
 
     invoke_signed(
@@ -94,19 +97,19 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
             mint1.clone(),
             rent_program.clone(),
         ],
-        &[&[user_ai.key.as_ref(), mint1.key.as_ref(), &[vault1_bump]]],
+        &[&[admin_ai.key.as_ref(), mint1.key.as_ref(), &[vault1_bump]]],
     )?;
 
     invoke_signed(
         &system_instruction::create_account(
-            user_ai.key,
+            admin_ai.key,
             vault2.key,
             Rent::get()?.minimum_balance(165),
             165,
             token_program.key,
         ),
-        &[user_ai.clone(), system_program.clone(), vault2.clone()],
-        &[&[user_ai.key.as_ref(), mint2.key.as_ref(), &[vault2_bump]]],
+        &[admin_ai.clone(), system_program.clone(), vault2.clone()],
+        &[&[admin_ai.key.as_ref(), mint2.key.as_ref(), &[vault2_bump]]],
     )?;
 
     invoke_signed(
@@ -117,20 +120,20 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
             mint2.clone(),
             rent_program.clone(),
         ],
-        &[&[user_ai.key.as_ref(), mint2.key.as_ref(), &[vault2_bump]]],
+        &[&[admin_ai.key.as_ref(), mint2.key.as_ref(), &[vault2_bump]]],
     )?;
 
     invoke_signed(
         &system_instruction::create_account(
-            user_ai.key,
+            admin_ai.key,
             oracle_ai.key,
             Rent::get()?.minimum_balance(8),
             8,
             program_id,
         ),
-        &[user_ai.clone(), oracle_ai.clone(), system_program.clone()],
+        &[admin_ai.clone(), oracle_ai.clone(), system_program.clone()],
         &[&[
-            user_ai.key.as_ref(),
+            admin_ai.key.as_ref(),
             mint1.key.as_ref(),
             mint2.key.as_ref(),
             &[oracle_bump],
@@ -139,13 +142,13 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
 
     invoke_signed(
         &system_instruction::create_account(
-            user_ai.key,
+            admin_ai.key,
             eb_ai.key,
             Rent::get()?.minimum_balance(64),
             64,
             program_id,
         ),
-        &[user_ai.clone(), eb_ai.clone(), system_program.clone()],
+        &[admin_ai.clone(), eb_ai.clone(), system_program.clone()],
         &[&[oracle_ai.key.as_ref(), &[eb_bump]]],
     )?;
 

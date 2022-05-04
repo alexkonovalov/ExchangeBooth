@@ -12,7 +12,7 @@ use crate::error::ExchangeBoothError;
 
 pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
-    let user_ai = next_account_info(accounts_iter)?;
+    let admin_ai = next_account_info(accounts_iter)?;
     let vault1 = next_account_info(accounts_iter)?;
     let vault2 = next_account_info(accounts_iter)?;
     let receiver1 = next_account_info(accounts_iter)?;
@@ -26,12 +26,12 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let receiver2_content = Account::unpack(&receiver2.data.borrow())?;
 
     let (vault1_key, vault1_bump) = Pubkey::find_program_address(
-        &[user_ai.key.as_ref(), vault1_content.mint.as_ref()],
+        &[admin_ai.key.as_ref(), vault1_content.mint.as_ref()],
         program_id,
     );
 
     let (vault2_key, vault2_bump) = Pubkey::find_program_address(
-        &[user_ai.key.as_ref(), vault2_content.mint.as_ref()],
+        &[admin_ai.key.as_ref(), vault2_content.mint.as_ref()],
         program_id,
     );
 
@@ -67,7 +67,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         )?,
         &[token_program.clone(), vault1.clone(), receiver1.clone()],
         &[&[
-            user_ai.key.as_ref(),
+            admin_ai.key.as_ref(),
             vault1_content.mint.as_ref(),
             &[vault1_bump],
         ]],
@@ -84,7 +84,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         )?,
         &[token_program.clone(), vault2.clone(), receiver2.clone()],
         &[&[
-            user_ai.key.as_ref(),
+            admin_ai.key.as_ref(),
             vault2_content.mint.as_ref(),
             &[vault2_bump],
         ]],

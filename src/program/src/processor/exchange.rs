@@ -88,6 +88,8 @@ pub fn process(
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
 
+    //todo pass mints so we can get the correct mint decimals value
+    //todo change value to integer - f64 not a good format for token
     let deposited_tokens = convert_to_u64(deposited_amount);
 
     invoke(
