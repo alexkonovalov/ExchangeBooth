@@ -5,19 +5,11 @@ import {
     TransactionInstruction,
 } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-
 import { getF64Buffer } from "./helpers";
-
-export enum Instruction {
-    Initialize = 0,
-    Deposit = 1,
-    Close = 2,
-    Exchange = 3,
-    Withdraw = 4,
-}
+import { Instruction } from "./const";
 
 export type CreateEbParams = {
-    ownerKey: PublicKey;
+    adminKey: PublicKey;
     ebKey: PublicKey;
     vault1Key: PublicKey;
     vault2Key: PublicKey;
@@ -26,7 +18,7 @@ export type CreateEbParams = {
 };
 
 export type DepositEbParams = {
-    ownerKey: PublicKey;
+    adminKey: PublicKey;
     vault1Key: PublicKey;
     vault2Key: PublicKey;
     donor1Key: PublicKey;
@@ -36,7 +28,7 @@ export type DepositEbParams = {
 };
 
 export type WithdrawEbParams = {
-    ownerKey: PublicKey;
+    adminKey: PublicKey;
     vault1Key: PublicKey;
     vault2Key: PublicKey;
     receiver1Key: PublicKey;
@@ -44,7 +36,7 @@ export type WithdrawEbParams = {
 };
 
 export type CloseEbParams = {
-    ownerKey: PublicKey;
+    adminKey: PublicKey;
     ebKey: PublicKey;
     oracleKey: PublicKey;
     vault1Key: PublicKey;
@@ -54,12 +46,14 @@ export type CloseEbParams = {
 };
 
 export type ExchangeParams = {
-    ownerKey: PublicKey;
+    userKey: PublicKey;
+    adminKey: PublicKey;
     oracleKey: PublicKey;
     receiverVaultKey: PublicKey;
     donorVaultKey: PublicKey;
     receiverKey: PublicKey;
     donorKey: PublicKey;
+    amount: number;
 };
 
 export const EB_PDA_SEED_GENERATORS = {
@@ -95,7 +89,7 @@ export class ExchangeBoothProgram {
     }
 
     public initialize({
-        ownerKey: payerKey,
+        adminKey,
         ebKey,
         vault1Key,
         vault2Key,
@@ -107,7 +101,7 @@ export class ExchangeBoothProgram {
         ]);
         return new TransactionInstruction({
             keys: [
-                { pubkey: payerKey, isSigner: true, isWritable: true },
+                { pubkey: adminKey, isSigner: true, isWritable: true },
                 { pubkey: ebKey, isSigner: false, isWritable: true },
                 {
                     pubkey: SystemProgram.programId,
@@ -136,7 +130,7 @@ export class ExchangeBoothProgram {
     }
 
     public deposit({
-        ownerKey,
+        adminKey,
         vault1Key,
         vault2Key,
         donor1Key,
@@ -152,7 +146,7 @@ export class ExchangeBoothProgram {
         return new TransactionInstruction({
             programId: this.programId,
             keys: [
-                { pubkey: ownerKey, isSigner: true, isWritable: true },
+                { pubkey: adminKey, isSigner: true, isWritable: true },
                 { pubkey: vault1Key, isSigner: false, isWritable: true },
                 { pubkey: vault2Key, isSigner: false, isWritable: true },
                 {
@@ -168,7 +162,7 @@ export class ExchangeBoothProgram {
     }
 
     public withdrow({
-        ownerKey,
+        adminKey,
         vault1Key,
         vault2Key,
         receiver1Key,
@@ -176,7 +170,7 @@ export class ExchangeBoothProgram {
     }: WithdrawEbParams) {
         return new TransactionInstruction({
             keys: [
-                { pubkey: ownerKey, isSigner: true, isWritable: true },
+                { pubkey: adminKey, isSigner: true, isWritable: true },
                 { pubkey: vault1Key, isSigner: false, isWritable: true },
                 { pubkey: vault2Key, isSigner: false, isWritable: true },
                 { pubkey: receiver1Key, isSigner: false, isWritable: true },
@@ -193,7 +187,7 @@ export class ExchangeBoothProgram {
     }
 
     public close({
-        ownerKey,
+        adminKey,
         ebKey,
         oracleKey,
         vault1Key,
@@ -203,7 +197,7 @@ export class ExchangeBoothProgram {
     }: CloseEbParams) {
         return new TransactionInstruction({
             keys: [
-                { pubkey: ownerKey, isSigner: true, isWritable: true },
+                { pubkey: adminKey, isSigner: true, isWritable: true },
                 { pubkey: ebKey, isSigner: false, isWritable: true },
                 { pubkey: vault1Key, isSigner: false, isWritable: true },
                 { pubkey: vault2Key, isSigner: false, isWritable: true },
@@ -224,16 +218,19 @@ export class ExchangeBoothProgram {
     }
 
     public exchange({
-        ownerKey,
+        userKey,
+        adminKey,
         oracleKey,
         receiverVaultKey,
         donorVaultKey,
         receiverKey,
         donorKey,
+        amount,
     }: ExchangeParams) {
         return new TransactionInstruction({
             keys: [
-                { pubkey: ownerKey, isSigner: true, isWritable: true },
+                { pubkey: userKey, isSigner: true, isWritable: false },
+                { pubkey: adminKey, isSigner: false, isWritable: false },
                 { pubkey: receiverVaultKey, isSigner: false, isWritable: true },
                 { pubkey: donorVaultKey, isSigner: false, isWritable: true },
                 { pubkey: receiverKey, isSigner: false, isWritable: true },
@@ -248,7 +245,7 @@ export class ExchangeBoothProgram {
             programId: this.programId,
             data: Buffer.concat([
                 new Uint8Array([Instruction.Exchange]),
-                getF64Buffer(2),
+                getF64Buffer(amount),
             ]),
         });
     }

@@ -22,6 +22,7 @@ pub fn process(
     let accounts_iter = &mut accounts.iter();
 
     let user_ai = next_account_info(accounts_iter)?;
+    let authority_ai = next_account_info(accounts_iter)?;
     let receiver_vault = next_account_info(accounts_iter)?;
     let donor_vault = next_account_info(accounts_iter)?;
     let receiver_account = next_account_info(accounts_iter)?;
@@ -39,7 +40,7 @@ pub fn process(
 
     let (oracle_receiver_to_donor_key, _bump) = Pubkey::find_program_address(
         &[
-            user_ai.key.as_ref(),
+            authority_ai.key.as_ref(),
             receivier_mint.as_ref(),
             donor_mint.as_ref(),
         ],
@@ -48,18 +49,22 @@ pub fn process(
 
     let (oracle_donor_to_receiver_key, _bump) = Pubkey::find_program_address(
         &[
-            user_ai.key.as_ref(),
+            authority_ai.key.as_ref(),
             donor_mint.as_ref(),
             receivier_mint.as_ref(),
         ],
         program_id,
     );
 
+    let oracle_key = oracle_ai.key;
+
+    let (eb_key, _eb_bump) = Pubkey::find_program_address(&[oracle_key.as_ref()], program_id);
+
     let (donor_vault_key, donor_vault_bump) =
-        Pubkey::find_program_address(&[user_ai.key.as_ref(), receivier_mint.as_ref()], program_id);
+        Pubkey::find_program_address(&[eb_key.as_ref(), receivier_mint.as_ref()], program_id);
 
     let (receiver_vault_key, _receiver_vault_bump) =
-        Pubkey::find_program_address(&[user_ai.key.as_ref(), donor_mint.as_ref()], program_id);
+        Pubkey::find_program_address(&[eb_key.as_ref(), donor_mint.as_ref()], program_id);
 
     if donor_vault_key != *donor_vault.key {
         msg!("Invalid account address for receiver donor vault");
@@ -74,7 +79,6 @@ pub fn process(
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
 
-    let oracle_key = oracle_ai.key;
     let withdrawn_tokens: u64;
 
     if oracle_key == &oracle_receiver_to_donor_key {
@@ -125,7 +129,7 @@ pub fn process(
             user_ai.clone(),
         ],
         &[&[
-            user_ai.key.as_ref(),
+            eb_key.as_ref(),
             receivier_mint.as_ref(),
             &[donor_vault_bump],
         ]],

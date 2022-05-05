@@ -86,7 +86,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
             token_program.key,
         ),
         &[admin_ai.clone(), system_program.clone(), vault1.clone()],
-        &[&[admin_ai.key.as_ref(), mint1.key.as_ref(), &[vault1_bump]]],
+        &[&[eb_ai.key.as_ref(), mint1.key.as_ref(), &[vault1_bump]]],
     )?;
 
     invoke_signed(
@@ -97,7 +97,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
             mint1.clone(),
             rent_program.clone(),
         ],
-        &[&[admin_ai.key.as_ref(), mint1.key.as_ref(), &[vault1_bump]]],
+        &[&[eb_ai.key.as_ref(), mint1.key.as_ref(), &[vault1_bump]]],
     )?;
 
     invoke_signed(
@@ -109,7 +109,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
             token_program.key,
         ),
         &[admin_ai.clone(), system_program.clone(), vault2.clone()],
-        &[&[admin_ai.key.as_ref(), mint2.key.as_ref(), &[vault2_bump]]],
+        &[&[eb_ai.key.as_ref(), mint2.key.as_ref(), &[vault2_bump]]],
     )?;
 
     invoke_signed(
@@ -120,7 +120,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
             mint2.clone(),
             rent_program.clone(),
         ],
-        &[&[admin_ai.key.as_ref(), mint2.key.as_ref(), &[vault2_bump]]],
+        &[&[eb_ai.key.as_ref(), mint2.key.as_ref(), &[vault2_bump]]],
     )?;
 
     invoke_signed(

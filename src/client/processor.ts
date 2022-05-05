@@ -2,15 +2,11 @@ import {
     Keypair,
     Connection,
     PublicKey,
-    Transaction,
     TransactionInstruction,
 } from "@solana/web3.js";
 import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
-import {
-    EB_PDA_SEED_GENERATORS,
-    ExchangeBoothProgram,
-    Instruction,
-} from "./program";
+import { EB_PDA_SEED_GENERATORS, ExchangeBoothProgram } from "./program";
+import { Instruction } from "./const";
 
 export class Processor {
     private readonly mint1Key: PublicKey;
@@ -32,7 +28,8 @@ export class Processor {
 
     async process(
         ix: Instruction,
-        ownerKeypair: Keypair
+        signerKeypair: Keypair,
+        ebAuthority: PublicKey
     ): Promise<TransactionInstruction> {
         const mint1PK = this.mint1Key;
         const mint2PK = this.mint2Key;
@@ -43,64 +40,50 @@ export class Processor {
 
         const token1Account = await getOrCreateAssociatedTokenAccount(
             connection,
-            ownerKeypair,
+            signerKeypair,
             mint1PK,
-            ownerKeypair.publicKey
+            signerKeypair.publicKey
         );
 
         const token2Account = await getOrCreateAssociatedTokenAccount(
             connection,
-            ownerKeypair,
+            signerKeypair,
             mint2PK,
-            ownerKeypair.publicKey
+            signerKeypair.publicKey
         );
+
+        const oracleKey = (
+            await PublicKey.findProgramAddress(
+                EB_PDA_SEED_GENERATORS.ORACLE(mint1PK, mint2PK, ebAuthority),
+                programId
+            )
+        )[0];
+
+        const ebKey = (
+            await PublicKey.findProgramAddress(
+                EB_PDA_SEED_GENERATORS.EXCHANGE_BOOTH(oracleKey),
+                programId
+            )
+        )[0];
 
         const vault1Key = (
             await PublicKey.findProgramAddress(
-                EB_PDA_SEED_GENERATORS.VAULT1(ownerKeypair.publicKey, mint1PK),
+                EB_PDA_SEED_GENERATORS.VAULT1(ebKey, mint1PK),
                 programId
             )
         )[0];
 
         const vault2Key = (
             await PublicKey.findProgramAddress(
-                EB_PDA_SEED_GENERATORS.VAULT1(ownerKeypair.publicKey, mint2PK),
+                EB_PDA_SEED_GENERATORS.VAULT1(ebKey, mint2PK),
                 programId
             )
         )[0];
 
         switch (ix) {
             case Instruction.Initialize: {
-                const oracleKey = (
-                    await PublicKey.findProgramAddress(
-                        EB_PDA_SEED_GENERATORS.ORACLE(
-                            mint1PK,
-                            mint2PK,
-                            ownerKeypair.publicKey
-                        ),
-                        programId
-                    )
-                )[0];
-
-                const ebKey = (
-                    await PublicKey.findProgramAddress(
-                        EB_PDA_SEED_GENERATORS.EXCHANGE_BOOTH(oracleKey),
-                        programId
-                    )
-                )[0];
-
-                console.log(
-                    "PREPARE INSTRUCTION INIT EXCHANGE BOOTH. ADDRESSES:"
-                );
-                console.log("vault:", vault1Key.toBase58());
-                console.log("vault2:", vault2Key.toBase58());
-                console.log("tokenAccount:", token1Account.address.toBase58());
-                console.log("token2Account:", token2Account.address.toBase58());
-                console.log("oracle:", oracleKey.toBase58());
-                console.log("ebKey:", ebKey.toBase58());
-
                 return program.initialize({
-                    ownerKey: ownerKeypair.publicKey,
+                    adminKey: ebAuthority,
                     ebKey,
                     vault1Key,
                     vault2Key,
@@ -110,7 +93,7 @@ export class Processor {
             }
             case Instruction.Deposit: {
                 return program.deposit({
-                    ownerKey: ownerKeypair.publicKey,
+                    adminKey: ebAuthority,
                     vault1Key,
                     vault2Key,
                     donor1Key: token1Account.address,
@@ -120,26 +103,8 @@ export class Processor {
                 });
             }
             case Instruction.Close: {
-                const oracleKey = (
-                    await PublicKey.findProgramAddress(
-                        EB_PDA_SEED_GENERATORS.ORACLE(
-                            mint1PK,
-                            mint2PK,
-                            ownerKeypair.publicKey
-                        ),
-                        programId
-                    )
-                )[0];
-
-                const ebKey = (
-                    await PublicKey.findProgramAddress(
-                        EB_PDA_SEED_GENERATORS.EXCHANGE_BOOTH(oracleKey),
-                        programId
-                    )
-                )[0];
-
                 return program.close({
-                    ownerKey: ownerKeypair.publicKey,
+                    adminKey: ebAuthority,
                     oracleKey,
                     ebKey,
                     receiver1Key: token1Account.address,
@@ -149,29 +114,20 @@ export class Processor {
                 });
             }
             case Instruction.Exchange: {
-                const oracleKey = (
-                    await PublicKey.findProgramAddress(
-                        EB_PDA_SEED_GENERATORS.ORACLE(
-                            mint1PK,
-                            mint2PK,
-                            ownerKeypair.publicKey
-                        ),
-                        programId
-                    )
-                )[0];
-
                 return program.exchange({
-                    ownerKey: ownerKeypair.publicKey,
+                    userKey: signerKeypair.publicKey,
+                    adminKey: ebAuthority,
                     oracleKey,
                     receiverVaultKey: vault2Key,
                     donorVaultKey: vault1Key,
                     receiverKey: token1Account.address,
                     donorKey: token2Account.address,
+                    amount: 2,
                 });
             }
             case Instruction.Withdraw: {
                 return program.withdrow({
-                    ownerKey: ownerKeypair.publicKey,
+                    adminKey: signerKeypair.publicKey,
                     vault1Key,
                     vault2Key,
                     receiver1Key: token1Account.address,

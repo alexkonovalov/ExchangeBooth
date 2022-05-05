@@ -11,11 +11,13 @@ export async function mintAssociatedToken({
     payerKeypair,
     mintPK,
     amount,
+    mintAuthority,
 }: {
     connection: Connection;
     payerKeypair: Keypair;
     mintPK: PublicKey;
     amount: number | bigint;
+    mintAuthority: Keypair;
 }) {
     const tokenAccount = await getOrCreateAssociatedTokenAccount(
         connection,
@@ -23,13 +25,12 @@ export async function mintAssociatedToken({
         mintPK,
         payerKeypair.publicKey
     );
-
     await mintTo(
         connection,
         payerKeypair,
         mintPK,
         tokenAccount.address,
-        payerKeypair.publicKey,
+        mintAuthority,
         amount
     );
 }

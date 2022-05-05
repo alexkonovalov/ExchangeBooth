@@ -32,14 +32,27 @@ pub fn process(
     let source1_content = Account::unpack(&source_mint1_ai.data.borrow())?;
     let source2_content = Account::unpack(&source_mint2_ai.data.borrow())?;
 
-    let (vault1_key, _vault1_bump) = Pubkey::find_program_address(
-        &[admin_ai.key.as_ref(), vault1_content.mint.as_ref()],
+    let (oracle_key, _oracle_bump) = Pubkey::find_program_address(
+        &[
+            admin_ai.key.as_ref(),
+            vault1_content.mint.as_ref(),
+            vault2_content.mint.as_ref(),
+        ],
         program_id,
     );
-    let (vault2_key, _vault2_bump) = Pubkey::find_program_address(
-        &[admin_ai.key.as_ref(), vault2_content.mint.as_ref()],
-        program_id,
-    );
+
+    let (eb_key, _eb_bump) = Pubkey::find_program_address(&[oracle_key.as_ref()], program_id);
+
+    let (vault1_key, _vault1_bump) =
+        Pubkey::find_program_address(&[eb_key.as_ref(), vault1_content.mint.as_ref()], program_id);
+
+    let (vault2_key, _vault2_bump) =
+        Pubkey::find_program_address(&[eb_key.as_ref(), vault2_content.mint.as_ref()], program_id);
+
+    msg!("_______ vault1_key{:?}", vault1_key);
+    msg!("_______ vault2_key {:?}", vault2_key);
+    msg!("_______ oracle_key {:?}", oracle_key);
+    msg!("_______ eb_key {:?}", eb_key);
 
     if vault1_key != *vault1.key {
         msg!("Invalid account address for Vault 1");

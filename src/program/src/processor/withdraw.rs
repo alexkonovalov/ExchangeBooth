@@ -25,15 +25,22 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let receiver1_content = Account::unpack(&receiver1.data.borrow())?;
     let receiver2_content = Account::unpack(&receiver2.data.borrow())?;
 
-    let (vault1_key, vault1_bump) = Pubkey::find_program_address(
-        &[admin_ai.key.as_ref(), vault1_content.mint.as_ref()],
+    let (oracle_key, _oracle_bump) = Pubkey::find_program_address(
+        &[
+            admin_ai.key.as_ref(),
+            vault1_content.mint.as_ref(),
+            vault2_content.mint.as_ref(),
+        ],
         program_id,
     );
 
-    let (vault2_key, vault2_bump) = Pubkey::find_program_address(
-        &[admin_ai.key.as_ref(), vault2_content.mint.as_ref()],
-        program_id,
-    );
+    let (eb_key, _eb_bump) = Pubkey::find_program_address(&[oracle_key.as_ref()], program_id);
+
+    let (vault1_key, vault1_bump) =
+        Pubkey::find_program_address(&[eb_key.as_ref(), vault1_content.mint.as_ref()], program_id);
+
+    let (vault2_key, vault2_bump) =
+        Pubkey::find_program_address(&[eb_key.as_ref(), vault2_content.mint.as_ref()], program_id);
 
     if vault1_key != *vault1.key {
         msg!("Invalid account address for Vault 1");
@@ -67,7 +74,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         )?,
         &[token_program.clone(), vault1.clone(), receiver1.clone()],
         &[&[
-            admin_ai.key.as_ref(),
+            eb_key.as_ref(),
             vault1_content.mint.as_ref(),
             &[vault1_bump],
         ]],
@@ -84,7 +91,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         )?,
         &[token_program.clone(), vault2.clone(), receiver2.clone()],
         &[&[
-            admin_ai.key.as_ref(),
+            eb_key.as_ref(),
             vault2_content.mint.as_ref(),
             &[vault2_bump],
         ]],

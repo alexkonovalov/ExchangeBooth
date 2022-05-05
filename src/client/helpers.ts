@@ -22,8 +22,6 @@ export async function createKeypairFromFile(
     filePath: string
 ): Promise<Keypair> {
     const secretKeyString = await fs.readFile(filePath, { encoding: "utf8" });
-    console.log("secretKeyString", secretKeyString);
-
     const secretKey = Uint8Array.from(JSON.parse(secretKeyString));
     return Keypair.fromSecretKey(secretKey);
 }
