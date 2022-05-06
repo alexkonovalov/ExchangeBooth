@@ -45,6 +45,11 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         program_id,
     );
 
+    if !admin_ai.is_signer {
+        msg!("No signature for booth admin");
+        return Err(ExchangeBoothError::MissingRequiredSignature.into());
+    }
+
     if vault1_key != *vault1.key {
         msg!("Invalid account address for Vault 1");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());

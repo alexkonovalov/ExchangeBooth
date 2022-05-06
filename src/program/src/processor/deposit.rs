@@ -49,6 +49,11 @@ pub fn process(
     let (vault2_key, _vault2_bump) =
         Pubkey::find_program_address(&[eb_key.as_ref(), vault2_content.mint.as_ref()], program_id);
 
+    if !admin_ai.is_signer {
+        msg!("No signature for booth admin");
+        return Err(ExchangeBoothError::MissingRequiredSignature.into());
+    }
+
     if vault1_key != *vault1.key {
         msg!("Invalid account address for Vault 1");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());

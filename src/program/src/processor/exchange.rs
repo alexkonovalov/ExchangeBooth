@@ -66,6 +66,11 @@ pub fn process(
     let (receiver_vault_key, _receiver_vault_bump) =
         Pubkey::find_program_address(&[eb_key.as_ref(), donor_mint.as_ref()], program_id);
 
+    if !user_ai.is_signer {
+        msg!("No signature for exchange performer");
+        return Err(ExchangeBoothError::MissingRequiredSignature.into());
+    }
+
     if donor_vault_key != *donor_vault.key {
         msg!("Invalid account address for receiver donor vault");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());

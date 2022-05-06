@@ -4,28 +4,12 @@ use thiserror::Error;
 
 #[derive(Error, Debug, Copy, Clone, FromPrimitive, PartialEq)]
 pub enum ExchangeBoothError {
-    // #[error("Account must be writable.")]
-    // AccountMustBeWritable,
-    // #[error("Account not initialized.")]
-    // AccountNotInitialized,
-    // #[error("Account contains non-zero data.")]
-    // AccountHasNonZeroData,
-    // #[error("Missing required signature.")]
-    // MissingRequiredSignature,
-    // #[error("Invalid program address.")]
-    // InvalidProgramAddress,
+    #[error("Missing required signature.")]
+    MissingRequiredSignature,
     #[error("Invalid account address.")]
     InvalidAccountAddress,
-    // #[error("Invalid instruction input.")]
-    // InvalidInstructionInput,
-    // #[error("Invalid account data.")]
-    // InvalidAccountData,
     #[error("Compute error.")]
     ComputeError,
-    // #[error("Instruction not implemented.")]
-    // NotImplemented,
-    // #[error("Insufficient funds.")]
-    // InsufficientFunds,
 }
 
 impl From<ExchangeBoothError> for ProgramError {
