@@ -49,11 +49,6 @@ pub fn process(
     let (vault2_key, _vault2_bump) =
         Pubkey::find_program_address(&[eb_key.as_ref(), vault2_content.mint.as_ref()], program_id);
 
-    msg!("_______ vault1_key{:?}", vault1_key);
-    msg!("_______ vault2_key {:?}", vault2_key);
-    msg!("_______ oracle_key {:?}", oracle_key);
-    msg!("_______ eb_key {:?}", eb_key);
-
     if vault1_key != *vault1.key {
         msg!("Invalid account address for Vault 1");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
