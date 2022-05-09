@@ -6,44 +6,49 @@ import {
 } from "@solana/web3.js";
 import BN from "bn.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { getF64Buffer, getu64Buffer } from "./helpers";
-import { Instruction } from "./const";
+import { getu64Buffer } from "./helpers";
+import {
+    BOOTH_FEE,
+    EXCHANGE_RATE_A_TO_B,
+    FEE_DECIMALS,
+    Instruction,
+    RATE_DECIMALS,
+} from "./const";
 
 export type CreateEbParams = {
     adminKey: PublicKey;
     ebKey: PublicKey;
-    vault1Key: PublicKey;
-    vault2Key: PublicKey;
+    vaultAKey: PublicKey;
+    vaultBKey: PublicKey;
     oracleKey: PublicKey;
-    tokenRate: number;
 };
 
 export type DepositEbParams = {
     adminKey: PublicKey;
-    vault1Key: PublicKey;
-    vault2Key: PublicKey;
-    donor1Key: PublicKey;
-    donor2Key: PublicKey;
-    amount_a: bigint;
-    amount_b: bigint;
+    vaultAKey: PublicKey;
+    vaultBKey: PublicKey;
+    donorAKey: PublicKey;
+    donorBKey: PublicKey;
+    amountA: bigint;
+    amountB: bigint;
 };
 
 export type WithdrawEbParams = {
     adminKey: PublicKey;
-    vault1Key: PublicKey;
-    vault2Key: PublicKey;
-    receiver1Key: PublicKey;
-    receiver2Key: PublicKey;
+    vaultAKey: PublicKey;
+    vaultBKey: PublicKey;
+    receiverAKey: PublicKey;
+    receiverBKey: PublicKey;
 };
 
 export type CloseEbParams = {
     adminKey: PublicKey;
     ebKey: PublicKey;
     oracleKey: PublicKey;
-    vault1Key: PublicKey;
-    vault2Key: PublicKey;
-    receiver1Key: PublicKey;
-    receiver2Key: PublicKey;
+    vaultAKey: PublicKey;
+    vaultBKey: PublicKey;
+    receiverAKey: PublicKey;
+    receiverBKey: PublicKey;
 };
 
 export type ExchangeParams = {
@@ -59,56 +64,46 @@ export type ExchangeParams = {
 };
 
 export const EB_PDA_SEED_GENERATORS = {
-    ORACLE: (mint1PK: PublicKey, mint2PK: PublicKey, ownerPK: PublicKey) => [
+    ORACLE: (mintAPK: PublicKey, mintBPK: PublicKey, ownerPK: PublicKey) => [
         ownerPK.toBuffer(),
-        mint1PK.toBuffer(),
-        mint2PK.toBuffer(),
+        mintAPK.toBuffer(),
+        mintBPK.toBuffer(),
     ],
     EXCHANGE_BOOTH: (oraclePK: PublicKey) => [oraclePK.toBuffer()],
-    VAULT1: (ownerPK: PublicKey, mint1PK: PublicKey) => [
+    VAULT: (ownerPK: PublicKey, mintPK: PublicKey) => [
         ownerPK.toBuffer(),
-        mint1PK.toBuffer(),
-    ],
-    VAULT2: (ownerPK: PublicKey, mint2PK: PublicKey) => [
-        ownerPK.toBuffer(),
-        mint2PK.toBuffer(),
+        mintPK.toBuffer(),
     ],
 };
 
 export class ExchangeBoothProgram {
-    private readonly mint1Key: PublicKey;
-    private readonly mint2Key: PublicKey;
+    private readonly mintAKey: PublicKey;
+    private readonly mintBKey: PublicKey;
     private readonly programId: PublicKey;
 
     constructor(
-        mint1Key: PublicKey,
-        mint2Key: PublicKey,
+        mintAKey: PublicKey,
+        mintBKey: PublicKey,
         programId: PublicKey
     ) {
-        this.mint1Key = mint1Key;
-        this.mint2Key = mint2Key;
+        this.mintAKey = mintAKey;
+        this.mintBKey = mintBKey;
         this.programId = programId;
     }
 
     public initialize({
         adminKey,
         ebKey,
-        vault1Key,
-        vault2Key,
+        vaultAKey,
+        vaultBKey,
         oracleKey,
     }: CreateEbParams) {
-        const exchangeRate = 100;
-        const boothFee = 10;
-
-        const rateDecimals = 2;
-        const feeDecimals = 2;
-
         const createEbIxData = Buffer.concat([
             new Uint8Array([Instruction.Initialize]),
-            getu64Buffer(BigInt(exchangeRate)),
-            Buffer.from(new Uint8Array(new BN(rateDecimals).toArray("le", 1))),
-            getu64Buffer(BigInt(boothFee)),
-            Buffer.from(new Uint8Array(new BN(feeDecimals).toArray("le", 1))),
+            getu64Buffer(EXCHANGE_RATE_A_TO_B),
+            Buffer.from(new Uint8Array(new BN(RATE_DECIMALS).toArray("le", 1))),
+            getu64Buffer(BigInt(BOOTH_FEE)),
+            Buffer.from(new Uint8Array(new BN(FEE_DECIMALS).toArray("le", 1))),
         ]);
         return new TransactionInstruction({
             keys: [
@@ -119,10 +114,10 @@ export class ExchangeBoothProgram {
                     isSigner: false,
                     isWritable: false,
                 },
-                { pubkey: this.mint1Key, isSigner: false, isWritable: false },
-                { pubkey: this.mint2Key, isSigner: false, isWritable: false },
-                { pubkey: vault1Key, isSigner: false, isWritable: true },
-                { pubkey: vault2Key, isSigner: false, isWritable: true },
+                { pubkey: this.mintAKey, isSigner: false, isWritable: false },
+                { pubkey: this.mintBKey, isSigner: false, isWritable: false },
+                { pubkey: vaultAKey, isSigner: false, isWritable: true },
+                { pubkey: vaultBKey, isSigner: false, isWritable: true },
                 { pubkey: oracleKey, isSigner: false, isWritable: true },
                 {
                     pubkey: TOKEN_PROGRAM_ID,
@@ -142,31 +137,31 @@ export class ExchangeBoothProgram {
 
     public deposit({
         adminKey,
-        vault1Key,
-        vault2Key,
-        donor1Key,
-        donor2Key,
-        amount_a,
-        amount_b,
+        vaultAKey,
+        vaultBKey,
+        donorAKey,
+        donorBKey,
+        amountA,
+        amountB,
     }: DepositEbParams) {
         const depositIxData = Buffer.concat([
             new Uint8Array([Instruction.Deposit]),
-            getu64Buffer(amount_a),
-            getu64Buffer(amount_b),
+            getu64Buffer(amountA),
+            getu64Buffer(amountB),
         ]);
         return new TransactionInstruction({
             programId: this.programId,
             keys: [
                 { pubkey: adminKey, isSigner: true, isWritable: true },
-                { pubkey: vault1Key, isSigner: false, isWritable: true },
-                { pubkey: vault2Key, isSigner: false, isWritable: true },
+                { pubkey: vaultAKey, isSigner: false, isWritable: true },
+                { pubkey: vaultBKey, isSigner: false, isWritable: true },
                 {
                     pubkey: TOKEN_PROGRAM_ID,
                     isSigner: false,
                     isWritable: false,
                 },
-                { pubkey: donor1Key, isSigner: false, isWritable: true },
-                { pubkey: donor2Key, isSigner: false, isWritable: true },
+                { pubkey: donorAKey, isSigner: false, isWritable: true },
+                { pubkey: donorBKey, isSigner: false, isWritable: true },
             ],
             data: depositIxData,
         });
@@ -174,18 +169,18 @@ export class ExchangeBoothProgram {
 
     public withdrow({
         adminKey,
-        vault1Key,
-        vault2Key,
-        receiver1Key,
-        receiver2Key,
+        vaultAKey,
+        vaultBKey,
+        receiverAKey,
+        receiverBKey,
     }: WithdrawEbParams) {
         return new TransactionInstruction({
             keys: [
                 { pubkey: adminKey, isSigner: true, isWritable: true },
-                { pubkey: vault1Key, isSigner: false, isWritable: true },
-                { pubkey: vault2Key, isSigner: false, isWritable: true },
-                { pubkey: receiver1Key, isSigner: false, isWritable: true },
-                { pubkey: receiver2Key, isSigner: false, isWritable: true },
+                { pubkey: vaultAKey, isSigner: false, isWritable: true },
+                { pubkey: vaultBKey, isSigner: false, isWritable: true },
+                { pubkey: receiverAKey, isSigner: false, isWritable: true },
+                { pubkey: receiverBKey, isSigner: false, isWritable: true },
                 {
                     pubkey: TOKEN_PROGRAM_ID,
                     isSigner: false,
@@ -201,21 +196,21 @@ export class ExchangeBoothProgram {
         adminKey,
         ebKey,
         oracleKey,
-        vault1Key,
-        vault2Key,
-        receiver1Key,
-        receiver2Key,
+        vaultAKey,
+        vaultBKey,
+        receiverAKey,
+        receiverBKey,
     }: CloseEbParams) {
         return new TransactionInstruction({
             keys: [
                 { pubkey: adminKey, isSigner: true, isWritable: true },
                 { pubkey: ebKey, isSigner: false, isWritable: true },
-                { pubkey: vault1Key, isSigner: false, isWritable: true },
-                { pubkey: vault2Key, isSigner: false, isWritable: true },
-                { pubkey: this.mint1Key, isSigner: false, isWritable: true },
-                { pubkey: this.mint2Key, isSigner: false, isWritable: true },
-                { pubkey: receiver1Key, isSigner: false, isWritable: true },
-                { pubkey: receiver2Key, isSigner: false, isWritable: true },
+                { pubkey: vaultAKey, isSigner: false, isWritable: true },
+                { pubkey: vaultBKey, isSigner: false, isWritable: true },
+                { pubkey: this.mintAKey, isSigner: false, isWritable: true },
+                { pubkey: this.mintBKey, isSigner: false, isWritable: true },
+                { pubkey: receiverAKey, isSigner: false, isWritable: true },
+                { pubkey: receiverBKey, isSigner: false, isWritable: true },
                 { pubkey: oracleKey, isSigner: false, isWritable: true },
                 {
                     pubkey: TOKEN_PROGRAM_ID,

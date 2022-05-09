@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node src/client/main.ts",
-    "mints:keys": "solana-keygen new -o dist/keys/mint1.so --no-bip39-passphrase --force; solana-keygen new -o dist/keys/mint2.so --no-bip39-passphrase --force;",
+    "mints:keys": "solana-keygen new -o dist/keys/mint_a.so --no-bip39-passphrase --force; solana-keygen new -o dist/keys/mint_b.so --no-bip39-passphrase --force;",
     "user:keys": "solana-keygen new -o dist/keys/user.so --no-bip39-passphrase --force;",
     "program:deploy": "solana program deploy dist/program/exchange_booth.so",
     "program:build": "cargo build-bpf --manifest-path=./src/program/Cargo.toml --bpf-out-dir=dist/program",

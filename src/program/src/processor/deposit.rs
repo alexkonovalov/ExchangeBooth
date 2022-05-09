@@ -18,51 +18,46 @@ pub fn process(
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
 
-    let admin_ai = next_account_info(accounts_iter)?;
-    let vault1 = next_account_info(accounts_iter)?;
-    let vault2 = next_account_info(accounts_iter)?;
+    let admin = next_account_info(accounts_iter)?;
+    let vault_a = next_account_info(accounts_iter)?;
+    let vault_b = next_account_info(accounts_iter)?;
     let token_program = next_account_info(accounts_iter)?;
-    let source_mint1_ai = next_account_info(accounts_iter)?;
-    let source_mint2_ai = next_account_info(accounts_iter)?;
-    let amount = amount_a; // convert_to_u64(amount);
-    let amount2 = amount_b; //convert_to_u64(amount2);
+    let source_a = next_account_info(accounts_iter)?;
+    let source_b = next_account_info(accounts_iter)?;
 
-    msg!("amount a< {:?}", amount);
-    msg!("amount b< {:?}", amount2);
+    let vault1_content = Account::unpack(&vault_a.data.borrow())?;
+    let vault2_content = Account::unpack(&vault_b.data.borrow())?;
+    let source1_content = Account::unpack(&source_a.data.borrow())?;
+    let source2_content = Account::unpack(&source_b.data.borrow())?;
 
-    let vault1_content = Account::unpack(&vault1.data.borrow())?;
-    let vault2_content = Account::unpack(&vault2.data.borrow())?;
-    let source1_content = Account::unpack(&source_mint1_ai.data.borrow())?;
-    let source2_content = Account::unpack(&source_mint2_ai.data.borrow())?;
-
-    let (oracle_key, _oracle_bump) = Pubkey::find_program_address(
+    let (oracle_key, _) = Pubkey::find_program_address(
         &[
-            admin_ai.key.as_ref(),
+            admin.key.as_ref(),
             vault1_content.mint.as_ref(),
             vault2_content.mint.as_ref(),
         ],
         program_id,
     );
 
-    let (eb_key, _eb_bump) = Pubkey::find_program_address(&[oracle_key.as_ref()], program_id);
+    let (eb_key, _) = Pubkey::find_program_address(&[oracle_key.as_ref()], program_id);
 
-    let (vault1_key, _vault1_bump) =
+    let (vault_a_key, _) =
         Pubkey::find_program_address(&[eb_key.as_ref(), vault1_content.mint.as_ref()], program_id);
 
-    let (vault2_key, _vault2_bump) =
+    let (vault_b_key, _) =
         Pubkey::find_program_address(&[eb_key.as_ref(), vault2_content.mint.as_ref()], program_id);
 
-    if !admin_ai.is_signer {
+    if !admin.is_signer {
         msg!("No signature for booth admin");
         return Err(ExchangeBoothError::MissingRequiredSignature.into());
     }
 
-    if vault1_key != *vault1.key {
-        msg!("Invalid account address for Vault 1");
+    if vault_a_key != *vault_a.key {
+        msg!("Invalid account address for Vault A");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
-    if vault2_key != *vault2.key {
-        msg!("Invalid account address for Vault 2");
+    if vault_b_key != *vault_b.key {
+        msg!("Invalid account address for Vault B");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
     if TOKEN_PROGRAM_ID != *token_program.key {
@@ -70,45 +65,45 @@ pub fn process(
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
     if vault1_content.mint != source1_content.mint {
-        msg!("Mint of source 1 does not match with vault 1");
+        msg!("Mint of source A does not match with vault A");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
     if vault2_content.mint != source2_content.mint {
-        msg!("Mint of source 2 does not match with vault 2");
+        msg!("Mint of source B does not match with vault B");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
 
     invoke(
         &transfer(
             token_program.key,
-            source_mint1_ai.key,
-            vault1.key,
-            admin_ai.key,
-            &[admin_ai.key],
-            amount,
+            source_a.key,
+            vault_a.key,
+            admin.key,
+            &[admin.key],
+            amount_a,
         )?,
         &[
             token_program.clone(),
-            vault1.clone(),
-            source_mint1_ai.clone(),
-            admin_ai.clone(),
+            vault_a.clone(),
+            source_a.clone(),
+            admin.clone(),
         ],
     )?;
 
     invoke(
         &transfer(
             token_program.key,
-            source_mint2_ai.key,
-            vault2.key,
-            admin_ai.key,
-            &[admin_ai.key],
-            amount2,
+            source_b.key,
+            vault_b.key,
+            admin.key,
+            &[admin.key],
+            amount_b,
         )?,
         &[
             token_program.clone(),
-            vault2.clone(),
-            source_mint2_ai.clone(),
-            admin_ai.clone(),
+            vault_b.clone(),
+            source_b.clone(),
+            admin.clone(),
         ],
     )?;
 

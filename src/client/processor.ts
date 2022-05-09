@@ -6,22 +6,29 @@ import {
 } from "@solana/web3.js";
 import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import { EB_PDA_SEED_GENERATORS, ExchangeBoothProgram } from "./program";
-import { DECIMALS, Instruction, TOKEN_A_TO_B_RATE } from "./const";
+import {
+    MINT_A_DECIMALS,
+    Instruction,
+    MINT_B_DECIMALS,
+    EXCHANGED_AMOUNT,
+    Direction,
+    EXCHANGE_DIRECTION,
+} from "./const";
 
 export class Processor {
-    private readonly mint1Key: PublicKey;
-    private readonly mint2Key: PublicKey;
+    private readonly mintAKey: PublicKey;
+    private readonly mintBKey: PublicKey;
     private readonly programId: PublicKey;
     private readonly connection: Connection;
 
     constructor(
-        mint1Key: PublicKey,
-        mint2Key: PublicKey,
+        mintAKey: PublicKey,
+        mintBKey: PublicKey,
         programId: PublicKey,
         connection: Connection
     ) {
-        this.mint1Key = mint1Key;
-        this.mint2Key = mint2Key;
+        this.mintAKey = mintAKey;
+        this.mintBKey = mintBKey;
         this.programId = programId;
         this.connection = connection;
     }
@@ -31,30 +38,30 @@ export class Processor {
         signerKeypair: Keypair,
         ebAuthority: PublicKey
     ): Promise<TransactionInstruction> {
-        const mint1PK = this.mint1Key;
-        const mint2PK = this.mint2Key;
+        const mintAKey = this.mintAKey;
+        const mintBKey = this.mintBKey;
         const programId = this.programId;
         const connection = this.connection;
 
-        let program = new ExchangeBoothProgram(mint1PK, mint2PK, programId);
+        let program = new ExchangeBoothProgram(mintAKey, mintBKey, programId);
 
-        const token1Account = await getOrCreateAssociatedTokenAccount(
+        const tokenAAccount = await getOrCreateAssociatedTokenAccount(
             connection,
             signerKeypair,
-            mint1PK,
+            mintAKey,
             signerKeypair.publicKey
         );
 
-        const token2Account = await getOrCreateAssociatedTokenAccount(
+        const tokenBAccount = await getOrCreateAssociatedTokenAccount(
             connection,
             signerKeypair,
-            mint2PK,
+            mintBKey,
             signerKeypair.publicKey
         );
 
         const oracleKey = (
             await PublicKey.findProgramAddress(
-                EB_PDA_SEED_GENERATORS.ORACLE(mint1PK, mint2PK, ebAuthority),
+                EB_PDA_SEED_GENERATORS.ORACLE(mintAKey, mintBKey, ebAuthority),
                 programId
             )
         )[0];
@@ -66,16 +73,16 @@ export class Processor {
             )
         )[0];
 
-        const vault1Key = (
+        const vaultAKey = (
             await PublicKey.findProgramAddress(
-                EB_PDA_SEED_GENERATORS.VAULT1(ebKey, mint1PK),
+                EB_PDA_SEED_GENERATORS.VAULT(ebKey, mintAKey),
                 programId
             )
         )[0];
 
-        const vault2Key = (
+        const vaultBKey = (
             await PublicKey.findProgramAddress(
-                EB_PDA_SEED_GENERATORS.VAULT1(ebKey, mint2PK),
+                EB_PDA_SEED_GENERATORS.VAULT(ebKey, mintBKey),
                 programId
             )
         )[0];
@@ -85,29 +92,28 @@ export class Processor {
                 console.log("INITIALIZE");
                 console.log("adminKey", ebAuthority.toBase58());
                 console.log("ebKey", ebKey.toBase58());
-                console.log("vault1Key", vault1Key.toBase58());
-                console.log("vault2Key", vault2Key.toBase58());
-                console.log("token1Account", token1Account.address.toBase58());
-                console.log("token2Account", token2Account.address.toBase58());
+                console.log("vaultAKey", vaultAKey.toBase58());
+                console.log("vaultBKey", vaultBKey.toBase58());
+                console.log("tokenAAccount", tokenAAccount.address.toBase58());
+                console.log("tokenBAccount", tokenBAccount.address.toBase58());
 
                 return program.initialize({
                     adminKey: ebAuthority,
                     ebKey,
-                    vault1Key,
-                    vault2Key,
+                    vaultAKey: vaultAKey,
+                    vaultBKey: vaultBKey,
                     oracleKey,
-                    tokenRate: TOKEN_A_TO_B_RATE,
                 });
             }
             case Instruction.Deposit: {
                 return program.deposit({
                     adminKey: ebAuthority,
-                    vault1Key,
-                    vault2Key,
-                    donor1Key: token1Account.address,
-                    donor2Key: token2Account.address,
-                    amount_a: BigInt(10 * Math.pow(10, DECIMALS)),
-                    amount_b: BigInt(10 * Math.pow(10, DECIMALS)),
+                    vaultAKey: vaultAKey,
+                    vaultBKey: vaultBKey,
+                    donorAKey: tokenAAccount.address,
+                    donorBKey: tokenBAccount.address,
+                    amountA: BigInt(10 * Math.pow(10, MINT_A_DECIMALS)),
+                    amountB: BigInt(10 * Math.pow(10, MINT_B_DECIMALS)),
                 });
             }
             case Instruction.Close: {
@@ -115,10 +121,10 @@ export class Processor {
                     adminKey: ebAuthority,
                     oracleKey,
                     ebKey,
-                    receiver1Key: token1Account.address,
-                    receiver2Key: token2Account.address,
-                    vault1Key,
-                    vault2Key,
+                    receiverAKey: tokenAAccount.address,
+                    receiverBKey: tokenBAccount.address,
+                    vaultAKey: vaultAKey,
+                    vaultBKey: vaultBKey,
                 });
             }
             case Instruction.Exchange: {
@@ -126,21 +132,30 @@ export class Processor {
                     userKey: signerKeypair.publicKey,
                     adminKey: ebAuthority,
                     oracleKey,
-                    receiverVaultKey: vault2Key,
-                    donorVaultKey: vault1Key,
-                    receiverKey: token1Account.address,
-                    donorKey: token2Account.address,
+                    ...(EXCHANGE_DIRECTION === Direction.ToB
+                        ? {
+                              receiverVaultKey: vaultAKey,
+                              donorVaultKey: vaultBKey,
+                              receiverKey: tokenBAccount.address,
+                              donorKey: tokenAAccount.address,
+                          }
+                        : {
+                              receiverVaultKey: vaultBKey,
+                              donorVaultKey: vaultAKey,
+                              receiverKey: tokenAAccount.address,
+                              donorKey: tokenBAccount.address,
+                          }),
                     ebKey,
-                    amount: BigInt(1 * Math.pow(10, DECIMALS)),
+                    amount: EXCHANGED_AMOUNT,
                 });
             }
             case Instruction.Withdraw: {
                 return program.withdrow({
                     adminKey: signerKeypair.publicKey,
-                    vault1Key,
-                    vault2Key,
-                    receiver1Key: token1Account.address,
-                    receiver2Key: token2Account.address,
+                    vaultAKey: vaultAKey,
+                    vaultBKey: vaultBKey,
+                    receiverAKey: tokenAAccount.address,
+                    receiverBKey: tokenBAccount.address,
                 });
             }
         }

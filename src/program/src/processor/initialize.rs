@@ -26,53 +26,49 @@ pub fn process(
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
 
-    let admin_ai = next_account_info(accounts_iter)?;
-    let eb_ai = next_account_info(accounts_iter)?;
+    let admin = next_account_info(accounts_iter)?;
+    let eb = next_account_info(accounts_iter)?;
     let system_program = next_account_info(accounts_iter)?;
-    let mint1 = next_account_info(accounts_iter)?;
-    let mint2 = next_account_info(accounts_iter)?;
-    let vault1 = next_account_info(accounts_iter)?;
-    let vault2 = next_account_info(accounts_iter)?;
+    let mint_a = next_account_info(accounts_iter)?;
+    let mint_b = next_account_info(accounts_iter)?;
+    let vault_a = next_account_info(accounts_iter)?;
+    let vault_b = next_account_info(accounts_iter)?;
     let oracle_ai = next_account_info(accounts_iter)?;
     let token_program = next_account_info(accounts_iter)?;
     let rent_program = next_account_info(accounts_iter)?;
 
     let (oracle_key, oracle_bump) = Pubkey::find_program_address(
-        &[
-            admin_ai.key.as_ref(),
-            mint1.key.as_ref(),
-            mint2.key.as_ref(),
-        ],
+        &[admin.key.as_ref(), mint_a.key.as_ref(), mint_b.key.as_ref()],
         program_id,
     );
 
     // so far oracle and exchange booth are 1 to 1 connected
     let (eb_key, eb_bump) = Pubkey::find_program_address(&[oracle_ai.key.as_ref()], program_id);
 
-    let (vault1_key, vault1_bump) =
-        Pubkey::find_program_address(&[eb_ai.key.as_ref(), mint1.key.as_ref()], program_id);
+    let (vault_a_key, vault_a_bump) =
+        Pubkey::find_program_address(&[eb.key.as_ref(), mint_a.key.as_ref()], program_id);
 
-    let (vault2_key, vault2_bump) =
-        Pubkey::find_program_address(&[eb_ai.key.as_ref(), mint2.key.as_ref()], program_id);
+    let (vault_b_key, vault_b_bump) =
+        Pubkey::find_program_address(&[eb.key.as_ref(), mint_b.key.as_ref()], program_id);
 
-    if !admin_ai.is_signer {
+    if !admin.is_signer {
         msg!("No signature for booth admin");
         return Err(ExchangeBoothError::MissingRequiredSignature.into());
     }
 
-    if vault1_key != *vault1.key {
-        msg!("Invalid account address for Vault 1");
+    if vault_a_key != *vault_a.key {
+        msg!("Invalid account address for Vault A");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
-    if vault2_key != *vault2.key {
-        msg!("Invalid account address for Vault 2");
+    if vault_b_key != *vault_b.key {
+        msg!("Invalid account address for Vault B");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
     if oracle_key != *oracle_ai.key {
         msg!("Invalid account address for Oracle");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
-    if eb_key != *eb_ai.key {
+    if eb_key != *eb.key {
         msg!("Invalid account address for Exchange Booth");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
@@ -91,84 +87,84 @@ pub fn process(
 
     invoke_signed(
         &system_instruction::create_account(
-            admin_ai.key,
-            vault1.key,
+            admin.key,
+            vault_a.key,
             Rent::get()?.minimum_balance(165),
             165,
             token_program.key,
         ),
-        &[admin_ai.clone(), system_program.clone(), vault1.clone()],
-        &[&[eb_ai.key.as_ref(), mint1.key.as_ref(), &[vault1_bump]]],
+        &[admin.clone(), system_program.clone(), vault_a.clone()],
+        &[&[eb.key.as_ref(), mint_a.key.as_ref(), &[vault_a_bump]]],
     )?;
 
     invoke_signed(
-        &initialize_account(token_program.key, vault1.key, mint1.key, vault1.key)?,
+        &initialize_account(token_program.key, vault_a.key, mint_a.key, vault_a.key)?,
         &[
             token_program.clone(),
-            vault1.clone(),
-            mint1.clone(),
+            vault_a.clone(),
+            mint_a.clone(),
             rent_program.clone(),
         ],
-        &[&[eb_ai.key.as_ref(), mint1.key.as_ref(), &[vault1_bump]]],
+        &[&[eb.key.as_ref(), mint_a.key.as_ref(), &[vault_a_bump]]],
     )?;
 
     invoke_signed(
         &system_instruction::create_account(
-            admin_ai.key,
-            vault2.key,
+            admin.key,
+            vault_b.key,
             Rent::get()?.minimum_balance(165),
             165,
             token_program.key,
         ),
-        &[admin_ai.clone(), system_program.clone(), vault2.clone()],
-        &[&[eb_ai.key.as_ref(), mint2.key.as_ref(), &[vault2_bump]]],
+        &[admin.clone(), system_program.clone(), vault_b.clone()],
+        &[&[eb.key.as_ref(), mint_b.key.as_ref(), &[vault_b_bump]]],
     )?;
 
     invoke_signed(
-        &initialize_account(token_program.key, vault2.key, mint2.key, vault2.key)?,
+        &initialize_account(token_program.key, vault_b.key, mint_b.key, vault_b.key)?,
         &[
             token_program.clone(),
-            vault2.clone(),
-            mint2.clone(),
+            vault_b.clone(),
+            mint_b.clone(),
             rent_program.clone(),
         ],
-        &[&[eb_ai.key.as_ref(), mint2.key.as_ref(), &[vault2_bump]]],
+        &[&[eb.key.as_ref(), mint_b.key.as_ref(), &[vault_b_bump]]],
     )?;
 
     invoke_signed(
         &system_instruction::create_account(
-            admin_ai.key,
+            admin.key,
             oracle_ai.key,
             Rent::get()?.minimum_balance(9),
             9,
             program_id,
         ),
-        &[admin_ai.clone(), oracle_ai.clone(), system_program.clone()],
+        &[admin.clone(), oracle_ai.clone(), system_program.clone()],
         &[&[
-            admin_ai.key.as_ref(),
-            mint1.key.as_ref(),
-            mint2.key.as_ref(),
+            admin.key.as_ref(),
+            mint_a.key.as_ref(),
+            mint_b.key.as_ref(),
             &[oracle_bump],
         ]],
     )?;
 
     invoke_signed(
         &system_instruction::create_account(
-            admin_ai.key,
-            eb_ai.key,
+            admin.key,
+            eb.key,
             Rent::get()?.minimum_balance(9),
             9,
             program_id,
         ),
-        &[admin_ai.clone(), eb_ai.clone(), system_program.clone()],
+        &[admin.clone(), eb.clone(), system_program.clone()],
         &[&[oracle_ai.key.as_ref(), &[eb_bump]]],
     )?;
 
-    let mut booth = ExchangeBoothAccount::try_from_slice(&eb_ai.data.borrow())?;
+    let mut booth = ExchangeBoothAccount::try_from_slice(&eb.data.borrow())?;
     booth.fee = fee;
     booth.decimals = fee_decimals;
 
-    booth.serialize(&mut *eb_ai.data.borrow_mut())?;
+    booth.serialize(&mut *eb.data.borrow_mut())?;
 
     let mut oracle = OracleAccount::try_from_slice(&oracle_ai.data.borrow())?;
     oracle.exchange_rate = exchange_rate;

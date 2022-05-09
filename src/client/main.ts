@@ -10,12 +10,12 @@ import { hideBin } from "yargs/helpers";
 import { closeAssociatedToken, mintAssociatedToken } from "./service";
 import { createKeypairFromFile, getConfig } from "./helpers";
 import { Processor } from "./processor";
-import { DECIMALS, Instruction } from "./const";
+import { MINT_A_DECIMALS, Instruction } from "./const";
 
 const PROGRAM_PATH = path.resolve(__dirname, "../../dist/program");
 const KEYS_PATH = path.resolve(__dirname, "../../dist/keys");
-const MINT1_SO_PATH = path.join(KEYS_PATH, "mint1.so");
-const MINT2_SO_PATH = path.join(KEYS_PATH, "mint2.so");
+const MINT_A_SO_PATH = path.join(KEYS_PATH, "mint_a.so");
+const MINT_B_SO_PATH = path.join(KEYS_PATH, "mint_b.so");
 const USER_SO_PATH = path.join(KEYS_PATH, "user.so");
 
 const PROGRAM_KEYPAIR_PATH = path.join(
@@ -36,8 +36,8 @@ async function main() {
 
     let adminKeypair = await createKeypairFromFile(config.keypair_path);
     let userKeypair = await createKeypairFromFile(USER_SO_PATH);
-    let mint1Keypair = await createKeypairFromFile(MINT1_SO_PATH);
-    let mint2Keypair = await createKeypairFromFile(MINT2_SO_PATH);
+    let mintAKeypair = await createKeypairFromFile(MINT_A_SO_PATH);
+    let mintBKeypair = await createKeypairFromFile(MINT_B_SO_PATH);
 
     const args = yargs
         .default(hideBin(process.argv))
@@ -81,8 +81,8 @@ async function main() {
             let programId = programKeypair.publicKey;
 
             const processor = new Processor(
-                mint1Keypair.publicKey,
-                mint2Keypair.publicKey,
+                mintAKeypair.publicKey,
+                mintBKeypair.publicKey,
                 programId,
                 connection
             );
@@ -128,29 +128,29 @@ async function main() {
             await mintAssociatedToken({
                 connection,
                 payerKeypair: adminKeypair,
-                mintPK: mint1Keypair.publicKey,
-                amount: 10 * Math.pow(10, DECIMALS),
+                mintPK: mintAKeypair.publicKey,
+                amount: 10 * Math.pow(10, MINT_A_DECIMALS),
                 mintAuthority: adminKeypair,
             });
             await mintAssociatedToken({
                 connection,
                 payerKeypair: adminKeypair,
-                mintPK: mint2Keypair.publicKey,
-                amount: 10 * Math.pow(10, DECIMALS),
+                mintPK: mintBKeypair.publicKey,
+                amount: 10 * Math.pow(10, MINT_A_DECIMALS),
                 mintAuthority: adminKeypair,
             });
             await mintAssociatedToken({
                 connection,
                 payerKeypair: userKeypair,
-                mintPK: mint1Keypair.publicKey,
-                amount: 10 * Math.pow(10, DECIMALS),
+                mintPK: mintAKeypair.publicKey,
+                amount: 10 * Math.pow(10, MINT_A_DECIMALS),
                 mintAuthority: adminKeypair,
             });
             await mintAssociatedToken({
                 connection,
                 payerKeypair: userKeypair,
-                mintPK: mint2Keypair.publicKey,
-                amount: 10 * Math.pow(10, DECIMALS),
+                mintPK: mintBKeypair.publicKey,
+                amount: 10 * Math.pow(10, MINT_A_DECIMALS),
                 mintAuthority: adminKeypair,
             });
             break;
@@ -161,8 +161,8 @@ async function main() {
                 adminKeypair,
                 adminKeypair.publicKey,
                 adminKeypair.publicKey,
-                DECIMALS,
-                mint1Keypair
+                MINT_A_DECIMALS,
+                mintAKeypair
             );
 
             await createMint(
@@ -170,20 +170,20 @@ async function main() {
                 adminKeypair,
                 adminKeypair.publicKey,
                 adminKeypair.publicKey,
-                DECIMALS,
-                mint2Keypair
+                MINT_A_DECIMALS,
+                mintBKeypair
             );
             break;
         }
         case args["tokens:clear"]: {
             closeAssociatedToken({
                 connection,
-                mintPK: mint1Keypair.publicKey,
+                mintPK: mintAKeypair.publicKey,
                 owner: userKeypair,
             });
             closeAssociatedToken({
                 connection,
-                mintPK: mint2Keypair.publicKey,
+                mintPK: mintBKeypair.publicKey,
                 owner: userKeypair,
             });
             break;
