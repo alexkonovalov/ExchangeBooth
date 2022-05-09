@@ -1,14 +1,14 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::pubkey::Pubkey;
 
 /// Define the type of state stored in accounts
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct ExchangeBoothAccount {
-    pub vault1: Pubkey,
-    pub vault2: Pubkey,
+    pub fee: u64,
+    pub decimals: u8,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct OracleAccount {
-    pub exchange_rate: f64,
+    pub exchange_rate: u64,
+    pub decimals: u8,
 }

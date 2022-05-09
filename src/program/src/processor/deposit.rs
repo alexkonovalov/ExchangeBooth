@@ -8,13 +8,13 @@ use solana_program::{
 };
 use spl_token::{instruction::transfer, state::Account, ID as TOKEN_PROGRAM_ID};
 
-use crate::{error::ExchangeBoothError, helpers::convert_to_u64};
+use crate::error::ExchangeBoothError;
 
 pub fn process(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    amount: f64,
-    amount2: f64,
+    amount_a: u64,
+    amount_b: u64,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
 
@@ -24,8 +24,11 @@ pub fn process(
     let token_program = next_account_info(accounts_iter)?;
     let source_mint1_ai = next_account_info(accounts_iter)?;
     let source_mint2_ai = next_account_info(accounts_iter)?;
-    let amount = convert_to_u64(amount);
-    let amount2 = convert_to_u64(amount2);
+    let amount = amount_a; // convert_to_u64(amount);
+    let amount2 = amount_b; //convert_to_u64(amount2);
+
+    msg!("amount a< {:?}", amount);
+    msg!("amount b< {:?}", amount2);
 
     let vault1_content = Account::unpack(&vault1.data.borrow())?;
     let vault2_content = Account::unpack(&vault2.data.borrow())?;

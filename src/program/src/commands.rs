@@ -2,11 +2,27 @@ use {borsh::BorshDeserialize, solana_program::program_error::ProgramError};
 
 #[derive(Debug, PartialEq, BorshDeserialize)]
 pub enum ProgramInstruction {
-    InitializeExchangeBooth { exchange_rate: f64 },
-    Deposit { amount: f64, amount2: f64 },
+    InitializeExchangeBooth {
+        exchange_rate: u64,
+        rate_decimals: u8,
+        fee: u64,
+        fee_decimals: u8,
+    },
+    Deposit {
+        amount_a: u64,
+        amount_b: u64,
+    },
     CloseExchangeBooth {},
-    Exchange { amount: f64 },
+    Exchange {
+        amount: u64,
+    },
     Withdraw {},
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum Direction {
+    ToA,
+    ToB,
 }
 
 impl ProgramInstruction {

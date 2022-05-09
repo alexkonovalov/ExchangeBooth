@@ -1,5 +1,6 @@
-use crate::state::OracleAccount;
-use crate::{error::ExchangeBoothError, helpers::convert_to_u64};
+use crate::helpers::convert;
+use crate::state::{ExchangeBoothAccount, OracleAccount};
+use crate::{commands::Direction, error::ExchangeBoothError};
 use borsh::BorshDeserialize;
 
 use solana_program::{
@@ -12,12 +13,10 @@ use solana_program::{
 };
 use spl_token::{instruction::transfer, state::Account, ID as TOKEN_PROGRAM_ID};
 
-const BOOTH_SPREAD: f64 = 0.05;
-
 pub fn process(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    deposited_amount: f64,
+    deposited_amount: u64,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
 
@@ -28,15 +27,24 @@ pub fn process(
     let receiver_account = next_account_info(accounts_iter)?;
     let donor_account = next_account_info(accounts_iter)?;
     let oracle_ai = next_account_info(accounts_iter)?;
+    let eb_ai = next_account_info(accounts_iter)?;
     let token_program = next_account_info(accounts_iter)?;
 
     let oracle_content = OracleAccount::try_from_slice(&oracle_ai.data.borrow())?;
 
     let donor_account_content = Account::unpack(&donor_account.data.borrow())?;
     let receiver_account_content = Account::unpack(&receiver_account.data.borrow())?;
+    let eb_account_content = ExchangeBoothAccount::try_from_slice(&eb_ai.data.borrow())?;
 
     let donor_mint = donor_account_content.mint;
     let receivier_mint = receiver_account_content.mint;
+
+    //todo unpack instead
+    let donor_mint_decimals = 9;
+    let receiver_mint_decimals = 9;
+
+    let fee = eb_account_content.fee;
+    let fee_decimals = eb_account_content.decimals;
 
     let (oracle_receiver_to_donor_key, _bump) = Pubkey::find_program_address(
         &[
@@ -87,19 +95,31 @@ pub fn process(
     let withdrawn_tokens: u64;
 
     if oracle_key == &oracle_receiver_to_donor_key {
-        withdrawn_tokens =
-            convert_to_u64(oracle_content.exchange_rate * deposited_amount * (1.0 - BOOTH_SPREAD));
+        withdrawn_tokens = convert(
+            oracle_content.exchange_rate,
+            deposited_amount,
+            fee,
+            Direction::ToA,
+            oracle_content.decimals,
+            receiver_mint_decimals,
+            donor_mint_decimals,
+            fee_decimals,
+        );
     } else if oracle_key == &oracle_donor_to_receiver_key {
-        withdrawn_tokens =
-            convert_to_u64(deposited_amount * (1.0 - BOOTH_SPREAD) / oracle_content.exchange_rate);
+        withdrawn_tokens = convert(
+            oracle_content.exchange_rate,
+            deposited_amount,
+            fee,
+            Direction::ToB,
+            oracle_content.decimals,
+            receiver_mint_decimals,
+            donor_mint_decimals,
+            fee_decimals,
+        );
     } else {
         msg!("Invalid Oracle Account Address");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
-
-    //todo pass mints so we can get the correct mint decimals value
-    //todo change value to integer - f64 not a good format for token
-    let deposited_tokens = convert_to_u64(deposited_amount);
 
     invoke(
         &transfer(
@@ -108,7 +128,7 @@ pub fn process(
             receiver_vault.key,
             user_ai.key,
             &[user_ai.key],
-            deposited_tokens,
+            deposited_amount,
         )?,
         &[
             token_program.clone(),

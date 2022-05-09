@@ -6,3 +6,5 @@ export enum Instruction {
     Exchange = 3,
     Withdraw = 4,
 }
+
+export const TOKEN_A_TO_B_RATE = 1;

@@ -12,6 +12,8 @@
     "program:redeploy": "npm run program:build && npm run program:deploy",
     "client:prepare": "rm -rf dist/keys && npm run mints:keys && npm run user:keys && npm run start -- --user:airdrop && npm run start -- --mints:create && npm run start -- --tokens:create",
     "client:run-all": "npm run start -- --ix=0 && npm run start -- --ix=1 && npm run start -- --ix=3 && npm run start -- --ix=4 && npm run start -- --ix=2",
+    "a": "npm run client:prepare && npm run start -- --ix=0 && npm run start -- --ix=1",
+    "b": " npm run start -- --ix=4 && npm run start -- --ix=2 && npm run start -- --tokens:clear",
     "client:cycle": "npm run client:prepare && npm run client:run-all && npm run start -- --tokens:clear",
     "booth:cycle": "rm -rf dist/program && npm run program:redeploy && npm run client:cycle",
     "test": "echo \"Error: no test specified\" && exit 1"

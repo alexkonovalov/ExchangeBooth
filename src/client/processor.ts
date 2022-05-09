@@ -6,7 +6,7 @@ import {
 } from "@solana/web3.js";
 import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import { EB_PDA_SEED_GENERATORS, ExchangeBoothProgram } from "./program";
-import { Instruction } from "./const";
+import { DECIMALS, Instruction, TOKEN_A_TO_B_RATE } from "./const";
 
 export class Processor {
     private readonly mint1Key: PublicKey;
@@ -82,13 +82,21 @@ export class Processor {
 
         switch (ix) {
             case Instruction.Initialize: {
+                console.log("INITIALIZE");
+                console.log("adminKey", ebAuthority.toBase58());
+                console.log("ebKey", ebKey.toBase58());
+                console.log("vault1Key", vault1Key.toBase58());
+                console.log("vault2Key", vault2Key.toBase58());
+                console.log("token1Account", token1Account.address.toBase58());
+                console.log("token2Account", token2Account.address.toBase58());
+
                 return program.initialize({
                     adminKey: ebAuthority,
                     ebKey,
                     vault1Key,
                     vault2Key,
                     oracleKey,
-                    tokenRate: 0.5,
+                    tokenRate: TOKEN_A_TO_B_RATE,
                 });
             }
             case Instruction.Deposit: {
@@ -98,8 +106,8 @@ export class Processor {
                     vault2Key,
                     donor1Key: token1Account.address,
                     donor2Key: token2Account.address,
-                    amount1: 5,
-                    amount2: 5,
+                    amount_a: BigInt(10 * Math.pow(10, DECIMALS)),
+                    amount_b: BigInt(10 * Math.pow(10, DECIMALS)),
                 });
             }
             case Instruction.Close: {
@@ -122,7 +130,8 @@ export class Processor {
                     donorVaultKey: vault1Key,
                     receiverKey: token1Account.address,
                     donorKey: token2Account.address,
-                    amount: 2,
+                    ebKey,
+                    amount: BigInt(1 * Math.pow(10, DECIMALS)),
                 });
             }
             case Instruction.Withdraw: {

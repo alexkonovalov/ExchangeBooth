@@ -4,8 +4,9 @@ import {
     SYSVAR_RENT_PUBKEY,
     TransactionInstruction,
 } from "@solana/web3.js";
+import BN from "bn.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { getF64Buffer } from "./helpers";
+import { getF64Buffer, getu64Buffer } from "./helpers";
 import { Instruction } from "./const";
 
 export type CreateEbParams = {
@@ -23,8 +24,8 @@ export type DepositEbParams = {
     vault2Key: PublicKey;
     donor1Key: PublicKey;
     donor2Key: PublicKey;
-    amount1: number;
-    amount2: number;
+    amount_a: bigint;
+    amount_b: bigint;
 };
 
 export type WithdrawEbParams = {
@@ -53,7 +54,8 @@ export type ExchangeParams = {
     donorVaultKey: PublicKey;
     receiverKey: PublicKey;
     donorKey: PublicKey;
-    amount: number;
+    ebKey: PublicKey;
+    amount: bigint;
 };
 
 export const EB_PDA_SEED_GENERATORS = {
@@ -95,9 +97,18 @@ export class ExchangeBoothProgram {
         vault2Key,
         oracleKey,
     }: CreateEbParams) {
+        const exchangeRate = 100;
+        const boothFee = 10;
+
+        const rateDecimals = 2;
+        const feeDecimals = 2;
+
         const createEbIxData = Buffer.concat([
             new Uint8Array([Instruction.Initialize]),
-            getF64Buffer(0.5),
+            getu64Buffer(BigInt(exchangeRate)),
+            Buffer.from(new Uint8Array(new BN(rateDecimals).toArray("le", 1))),
+            getu64Buffer(BigInt(boothFee)),
+            Buffer.from(new Uint8Array(new BN(feeDecimals).toArray("le", 1))),
         ]);
         return new TransactionInstruction({
             keys: [
@@ -135,13 +146,13 @@ export class ExchangeBoothProgram {
         vault2Key,
         donor1Key,
         donor2Key,
-        amount1,
-        amount2,
+        amount_a,
+        amount_b,
     }: DepositEbParams) {
         const depositIxData = Buffer.concat([
             new Uint8Array([Instruction.Deposit]),
-            getF64Buffer(amount1),
-            getF64Buffer(amount2),
+            getu64Buffer(amount_a),
+            getu64Buffer(amount_b),
         ]);
         return new TransactionInstruction({
             programId: this.programId,
@@ -225,6 +236,7 @@ export class ExchangeBoothProgram {
         donorVaultKey,
         receiverKey,
         donorKey,
+        ebKey,
         amount,
     }: ExchangeParams) {
         return new TransactionInstruction({
@@ -236,6 +248,7 @@ export class ExchangeBoothProgram {
                 { pubkey: receiverKey, isSigner: false, isWritable: true },
                 { pubkey: donorKey, isSigner: false, isWritable: true },
                 { pubkey: oracleKey, isSigner: false, isWritable: false },
+                { pubkey: ebKey, isSigner: false, isWritable: false },
                 {
                     pubkey: TOKEN_PROGRAM_ID,
                     isSigner: false,
@@ -245,7 +258,7 @@ export class ExchangeBoothProgram {
             programId: this.programId,
             data: Buffer.concat([
                 new Uint8Array([Instruction.Exchange]),
-                getF64Buffer(amount),
+                getu64Buffer(amount),
             ]),
         });
     }

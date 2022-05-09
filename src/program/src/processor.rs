@@ -31,15 +31,25 @@ pub fn process_instruction(
             amount: deposited_amount,
         }) => processor::exchange::process(program_id, accounts, deposited_amount)?,
         Ok(ProgramInstruction::Withdraw {}) => processor::withdraw::process(program_id, accounts)?,
-        Ok(ProgramInstruction::Deposit { amount, amount2 }) => {
-            processor::deposit::process(program_id, accounts, amount, amount2)?
+        Ok(ProgramInstruction::Deposit { amount_a, amount_b }) => {
+            processor::deposit::process(program_id, accounts, amount_a, amount_b)?
         }
         Ok(ProgramInstruction::CloseExchangeBooth {}) => {
             processor::close::process(program_id, accounts)?
         }
-        Ok(ProgramInstruction::InitializeExchangeBooth { exchange_rate }) => {
-            processor::initialize::process(program_id, accounts, exchange_rate)?
-        }
+        Ok(ProgramInstruction::InitializeExchangeBooth {
+            exchange_rate,
+            rate_decimals: decimals,
+            fee,
+            fee_decimals,
+        }) => processor::initialize::process(
+            program_id,
+            accounts,
+            exchange_rate,
+            decimals,
+            fee,
+            fee_decimals,
+        )?,
         _ => {}
     }
 

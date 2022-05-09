@@ -16,7 +16,14 @@ use solana_program::{
 };
 use spl_token::{instruction::initialize_account, ID as TOKEN_PROGRAM_ID};
 
-pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64) -> ProgramResult {
+pub fn process(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    exchange_rate: u64,
+    rate_decimals: u8,
+    fee: u64,
+    fee_decimals: u8,
+) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
 
     let admin_ai = next_account_info(accounts_iter)?;
@@ -132,8 +139,8 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
         &system_instruction::create_account(
             admin_ai.key,
             oracle_ai.key,
-            Rent::get()?.minimum_balance(8),
-            8,
+            Rent::get()?.minimum_balance(9),
+            9,
             program_id,
         ),
         &[admin_ai.clone(), oracle_ai.clone(), system_program.clone()],
@@ -149,8 +156,8 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
         &system_instruction::create_account(
             admin_ai.key,
             eb_ai.key,
-            Rent::get()?.minimum_balance(64),
-            64,
+            Rent::get()?.minimum_balance(9),
+            9,
             program_id,
         ),
         &[admin_ai.clone(), eb_ai.clone(), system_program.clone()],
@@ -158,13 +165,15 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], exchange_rate: f64
     )?;
 
     let mut booth = ExchangeBoothAccount::try_from_slice(&eb_ai.data.borrow())?;
-    booth.vault1 = *vault1.key;
-    booth.vault2 = *vault2.key;
+    booth.fee = fee;
+    booth.decimals = fee_decimals;
 
     booth.serialize(&mut *eb_ai.data.borrow_mut())?;
 
     let mut oracle = OracleAccount::try_from_slice(&oracle_ai.data.borrow())?;
     oracle.exchange_rate = exchange_rate;
+    oracle.decimals = rate_decimals;
+
     oracle.serialize(&mut *oracle_ai.data.borrow_mut())?;
 
     Ok(())

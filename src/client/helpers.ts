@@ -43,3 +43,9 @@ export function getF64Buffer(val: number) {
     fa[0] = val;
     return Buffer.from(fa.buffer);
 }
+
+export function getu64Buffer(val: bigint) {
+    let fa = new BigUint64Array(1);
+    fa[0] = val;
+    return Buffer.from(fa.buffer);
+}
