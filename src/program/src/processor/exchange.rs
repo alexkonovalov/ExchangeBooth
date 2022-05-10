@@ -11,7 +11,7 @@ use solana_program::{
     program_pack::Pack,
     pubkey::Pubkey,
 };
-use spl_token::{instruction::transfer, state::Account, ID as TOKEN_PROGRAM_ID};
+use spl_token::{instruction::transfer, state::Account, state::Mint, ID as TOKEN_PROGRAM_ID};
 
 pub fn process(
     program_id: &Pubkey,
@@ -28,20 +28,23 @@ pub fn process(
     let donor_account = next_account_info(accounts_iter)?;
     let oracle = next_account_info(accounts_iter)?;
     let eb = next_account_info(accounts_iter)?;
+    let donor_mint = next_account_info(accounts_iter)?;
+    let receiver_mint = next_account_info(accounts_iter)?;
     let token_program = next_account_info(accounts_iter)?;
 
     let oracle_content = OracleAccount::try_from_slice(&oracle.data.borrow())?;
-
     let donor_account_content = Account::unpack(&donor_account.data.borrow())?;
     let receiver_account_content = Account::unpack(&receiver_account.data.borrow())?;
+    let donor_mint_content = Mint::unpack(&donor_mint.data.borrow())?;
+    let receiver_mint_content = Mint::unpack(&receiver_mint.data.borrow())?;
     let eb_account_content = ExchangeBoothAccount::try_from_slice(&eb.data.borrow())?;
 
-    let donor_mint = donor_account_content.mint;
-    let receivier_mint = receiver_account_content.mint;
+    let donor_mint_key = donor_account_content.mint;
+    let receiver_mint_key = receiver_account_content.mint;
 
     //todo unpack instead
-    let donor_mint_decimals = 9;
-    let receiver_mint_decimals = 9;
+    let donor_mint_decimals = donor_mint_content.decimals;
+    let receiver_mint_decimals = receiver_mint_content.decimals;
 
     let fee = eb_account_content.fee;
     let fee_decimals = eb_account_content.decimals;
@@ -49,8 +52,8 @@ pub fn process(
     let (oracle_receiver_to_donor_key, _) = Pubkey::find_program_address(
         &[
             authority.key.as_ref(),
-            receivier_mint.as_ref(),
-            donor_mint.as_ref(),
+            receiver_mint_key.as_ref(),
+            donor_mint_key.as_ref(),
         ],
         program_id,
     );
@@ -58,8 +61,8 @@ pub fn process(
     let (oracle_donor_to_receiver_key, _) = Pubkey::find_program_address(
         &[
             authority.key.as_ref(),
-            donor_mint.as_ref(),
-            receivier_mint.as_ref(),
+            donor_mint_key.as_ref(),
+            receiver_mint_key.as_ref(),
         ],
         program_id,
     );
@@ -69,14 +72,23 @@ pub fn process(
     let (eb_key, _) = Pubkey::find_program_address(&[oracle_key.as_ref()], program_id);
 
     let (donor_vault_key, donor_vault_bump) =
-        Pubkey::find_program_address(&[eb_key.as_ref(), receivier_mint.as_ref()], program_id);
+        Pubkey::find_program_address(&[eb_key.as_ref(), receiver_mint_key.as_ref()], program_id);
 
     let (receiver_vault_key, _receiver_vault_bump) =
-        Pubkey::find_program_address(&[eb_key.as_ref(), donor_mint.as_ref()], program_id);
+        Pubkey::find_program_address(&[eb_key.as_ref(), donor_mint_key.as_ref()], program_id);
 
     if !user.is_signer {
         msg!("No signature for exchange performer");
         return Err(ExchangeBoothError::MissingRequiredSignature.into());
+    }
+
+    if donor_mint_key != *donor_mint.key {
+        msg!("Invalid account address for donor mint");
+        return Err(ExchangeBoothError::InvalidAccountAddress.into());
+    }
+    if receiver_vault_key != *receiver_vault.key {
+        msg!("Invalid account address for receiver mint");
+        return Err(ExchangeBoothError::InvalidAccountAddress.into());
     }
 
     if donor_vault_key != *donor_vault.key {
@@ -155,7 +167,7 @@ pub fn process(
         ],
         &[&[
             eb_key.as_ref(),
-            receivier_mint.as_ref(),
+            receiver_mint_key.as_ref(),
             &[donor_vault_bump],
         ]],
     )?;

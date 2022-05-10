@@ -244,6 +244,8 @@ export class ExchangeBoothProgram {
                 { pubkey: donorKey, isSigner: false, isWritable: true },
                 { pubkey: oracleKey, isSigner: false, isWritable: false },
                 { pubkey: ebKey, isSigner: false, isWritable: false },
+                { pubkey: this.mintAKey, isSigner: false, isWritable: false },
+                { pubkey: this.mintBKey, isSigner: false, isWritable: false },
                 {
                     pubkey: TOKEN_PROGRAM_ID,
                     isSigner: false,
