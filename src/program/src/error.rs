@@ -10,6 +10,10 @@ pub enum ExchangeBoothError {
     InvalidAccountAddress,
     #[error("Compute error.")]
     ComputeError,
+    #[error("FeeOverMaxError")]
+    FeeOverMaxError,
+    #[error("Conversion error.")]
+    ConversionError,
 }
 
 impl From<ExchangeBoothError> for ProgramError {

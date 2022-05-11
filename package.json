@@ -16,7 +16,7 @@
     "b": " npm run start -- --ix=4 && npm run start -- --ix=2 && npm run start -- --tokens:clear",
     "client:cycle": "npm run client:prepare && npm run client:run-all && npm run start -- --tokens:clear",
     "booth:cycle": "rm -rf dist/program && npm run program:redeploy && npm run client:cycle",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "cargo test --manifest-path=./src/program/Cargo.toml"
   },
   "dependencies": {
     "@solana/spl-token": "^0.2.0",

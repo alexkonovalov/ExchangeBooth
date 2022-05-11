@@ -1,4 +1,4 @@
-use crate::helpers::convert;
+use crate::convert::convert;
 use crate::state::{ExchangeBoothAccount, OracleAccount};
 use crate::{commands::Direction, error::ExchangeBoothError};
 use borsh::BorshDeserialize;
@@ -116,7 +116,8 @@ pub fn process(
             receiver_mint_decimals,
             donor_mint_decimals,
             fee_decimals,
-        );
+        )
+        .unwrap();
     } else if oracle_key == &oracle_donor_to_receiver_key {
         withdrawn_tokens = convert(
             oracle_content.exchange_rate,
@@ -127,7 +128,8 @@ pub fn process(
             receiver_mint_decimals,
             donor_mint_decimals,
             fee_decimals,
-        );
+        )
+        .unwrap();
     } else {
         msg!("Invalid Oracle Account Address");
         return Err(ExchangeBoothError::InvalidAccountAddress.into());
