@@ -65,7 +65,7 @@ mod tests {
     }
 
     #[test]
-    fn exchange_a_to_b() {
+    fn convert_a_to_b() {
         let decimals_rate: u8 = 1;
         let decimals_a: u8 = 1;
         let decimals_b: u8 = 1;
@@ -94,7 +94,7 @@ mod tests {
     }
 
     #[test]
-    fn exchange_b_to_a() {
+    fn convert_b_to_a() {
         let decimals: u8 = 2;
         let rate_a_to_b = adjust(0.5, decimals);
         let fee = adjust(0.1, decimals);
@@ -118,7 +118,7 @@ mod tests {
     }
 
     #[test]
-    fn exchange_extreme_large_num() {
+    fn convert_extreme_large_num() {
         let decimals_rate: u8 = 0;
         let decimals_a: u8 = 0;
         let decimals_b: u8 = 0;
@@ -144,7 +144,7 @@ mod tests {
     }
 
     #[test]
-    fn exchange_fee_overflow() {
+    fn econvert_fee_overflow() {
         let decimals: u8 = 1;
         let rate_a_to_b = adjust(0.5, decimals);
         let fee = adjust(1.1, decimals);
