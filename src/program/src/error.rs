@@ -10,8 +10,10 @@ pub enum ExchangeBoothError {
     InvalidAccountAddress,
     #[error("Compute error.")]
     ComputeError,
-    #[error("FeeOverMaxError")]
+    #[error("Fee exceeds 100%")]
     FeeOverMaxError,
+    #[error("Conversion results in zero token amount.")]
+    TooSmallAmountError,
     #[error("Conversion error.")]
     ConversionError,
 }

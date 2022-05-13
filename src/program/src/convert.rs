@@ -47,6 +47,10 @@ pub fn convert(
         }
     }
 
+    if product == 0 {
+        return Err(ExchangeBoothError::TooSmallAmountError);
+    }
+
     return Ok(u64::try_from(product)
         .map_err(|_| ExchangeBoothError::ConversionError)
         .unwrap());
@@ -91,27 +95,22 @@ mod tests {
 
     #[test]
     fn exchange_b_to_a() {
-        let decimals_rate: u8 = 1;
-        let decimals_a: u8 = 1;
-        let decimals_b: u8 = 1;
-        let decimals_fee: u8 = 1;
-
-        let rate_a_to_b = adjust(0.5, decimals_rate);
-        let fee = adjust(0.1, decimals_fee);
-        let deposited_a: u64 = adjust(0.1, decimals_a);
+        let decimals: u8 = 2;
+        let rate_a_to_b = adjust(0.5, decimals);
+        let fee = adjust(0.1, decimals);
+        let deposited_a: u64 = adjust(0.1, decimals);
         let direction: Direction = Direction::ToA;
-
-        let expected_b = adjust(0.04, decimals_b);
+        let expected_b = adjust(0.04, decimals);
 
         let result = convert(
             rate_a_to_b,
             deposited_a,
             fee,
             direction,
-            decimals_rate,
-            decimals_a,
-            decimals_b,
-            decimals_fee,
+            decimals,
+            decimals,
+            decimals,
+            decimals,
         )
         .unwrap();
 
@@ -146,27 +145,47 @@ mod tests {
 
     #[test]
     fn exchange_fee_overflow() {
-        let decimals_rate: u8 = 1;
-        let decimals_a: u8 = 1;
-        let decimals_b: u8 = 1;
-        let decimals_fee: u8 = 1;
-
-        let rate_a_to_b = adjust(0.5, decimals_rate);
-        let fee = adjust(1.1, decimals_fee);
-        let deposited_a: u64 = adjust(0.1, decimals_a);
+        let decimals: u8 = 1;
+        let rate_a_to_b = adjust(0.5, decimals);
+        let fee = adjust(1.1, decimals);
+        let deposited_b: u64 = adjust(0.1, decimals);
         let direction: Direction = Direction::ToA;
 
         let expected_error = Err(ExchangeBoothError::FeeOverMaxError.into());
 
         let result = convert(
             rate_a_to_b,
+            deposited_b,
+            fee,
+            direction,
+            decimals,
+            decimals,
+            decimals,
+            decimals,
+        );
+
+        assert_eq!(result, expected_error);
+    }
+
+    #[test]
+    fn product_zero_error() {
+        let decimals: u8 = 0;
+        let rate_a_to_b = 10;
+        let fee = 0;
+        let deposited_a: u64 = 4;
+        let direction: Direction = Direction::ToB;
+
+        let expected_error = Err(ExchangeBoothError::TooSmallAmountError.into());
+
+        let result = convert(
+            rate_a_to_b,
             deposited_a,
             fee,
             direction,
-            decimals_rate,
-            decimals_a,
-            decimals_b,
-            decimals_fee,
+            decimals,
+            decimals,
+            decimals,
+            decimals,
         );
 
         assert_eq!(result, expected_error);
