@@ -11,7 +11,7 @@
 
 Smart contract project that faciliates on-chain token exchanges. This is an implementation of [Day 3 Solana bootcamp project exercise](https://www.youtube.com/playlist?list=PLilwLeBwGuK7Z2dXft_pmLZ675fuPgkA0).
 
-Client can perform several instructions:
+Client can perform several instructions on Exchange Booth program:
 
 -   Initialize `npm run -- --ix=0`
 -   Deposit `npm run -- --ix=1`
