@@ -42,7 +42,6 @@ pub fn process(
     let donor_mint_key = donor_account_content.mint;
     let receiver_mint_key = receiver_account_content.mint;
 
-    //todo unpack instead
     let donor_mint_decimals = donor_mint_content.decimals;
     let receiver_mint_decimals = receiver_mint_content.decimals;
 

@@ -61,6 +61,8 @@ export type ExchangeParams = {
     donorKey: PublicKey;
     ebKey: PublicKey;
     amount: bigint;
+    donorMintKey: PublicKey;
+    receiverMintKey: PublicKey;
 };
 
 export const EB_PDA_SEED_GENERATORS = {
@@ -152,7 +154,7 @@ export class ExchangeBoothProgram {
         return new TransactionInstruction({
             programId: this.programId,
             keys: [
-                { pubkey: adminKey, isSigner: true, isWritable: true },
+                { pubkey: adminKey, isSigner: true, isWritable: false },
                 { pubkey: vaultAKey, isSigner: false, isWritable: true },
                 { pubkey: vaultBKey, isSigner: false, isWritable: true },
                 {
@@ -176,7 +178,7 @@ export class ExchangeBoothProgram {
     }: WithdrawEbParams) {
         return new TransactionInstruction({
             keys: [
-                { pubkey: adminKey, isSigner: true, isWritable: true },
+                { pubkey: adminKey, isSigner: true, isWritable: false },
                 { pubkey: vaultAKey, isSigner: false, isWritable: true },
                 { pubkey: vaultBKey, isSigner: false, isWritable: true },
                 { pubkey: receiverAKey, isSigner: false, isWritable: true },
@@ -203,7 +205,7 @@ export class ExchangeBoothProgram {
     }: CloseEbParams) {
         return new TransactionInstruction({
             keys: [
-                { pubkey: adminKey, isSigner: true, isWritable: true },
+                { pubkey: adminKey, isSigner: true, isWritable: false },
                 { pubkey: ebKey, isSigner: false, isWritable: true },
                 { pubkey: vaultAKey, isSigner: false, isWritable: true },
                 { pubkey: vaultBKey, isSigner: false, isWritable: true },
@@ -233,6 +235,8 @@ export class ExchangeBoothProgram {
         donorKey,
         ebKey,
         amount,
+        donorMintKey,
+        receiverMintKey,
     }: ExchangeParams) {
         return new TransactionInstruction({
             keys: [
@@ -244,8 +248,8 @@ export class ExchangeBoothProgram {
                 { pubkey: donorKey, isSigner: false, isWritable: true },
                 { pubkey: oracleKey, isSigner: false, isWritable: false },
                 { pubkey: ebKey, isSigner: false, isWritable: false },
-                { pubkey: this.mintAKey, isSigner: false, isWritable: false },
-                { pubkey: this.mintBKey, isSigner: false, isWritable: false },
+                { pubkey: donorMintKey, isSigner: false, isWritable: false },
+                { pubkey: receiverMintKey, isSigner: false, isWritable: false },
                 {
                     pubkey: TOKEN_PROGRAM_ID,
                     isSigner: false,

@@ -138,12 +138,16 @@ export class Processor {
                               donorVaultKey: vaultBKey,
                               receiverKey: tokenBAccount.address,
                               donorKey: tokenAAccount.address,
+                              donorMintKey: mintAKey,
+                              receiverMintKey: mintBKey,
                           }
                         : {
                               receiverVaultKey: vaultBKey,
                               donorVaultKey: vaultAKey,
                               receiverKey: tokenAAccount.address,
                               donorKey: tokenBAccount.address,
+                              donorMintKey: mintBKey,
+                              receiverMintKey: mintAKey,
                           }),
                     ebKey,
                     amount: EXCHANGED_AMOUNT,
