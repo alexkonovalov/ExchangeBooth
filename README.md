@@ -5,7 +5,7 @@
 -   [About](#about)
 -   [Disclaimer](#disclaimer)
 -   [Getting Started](#getting_started)
--   [Usage](#usage)
+-   [Prerequisites](#prerequisites)
 
 ## About <a name = "about"></a>
 
@@ -33,7 +33,7 @@ This is not production-ready smart contract. The goal of this project is to stud
 1. Make sure in local solana configuration `json_rpc_url` value is local test validator address or solana devnet address.
 2. Run `npm run booth:cycle` to build and deploy _bpf_, prepare environment and run the sequense of all commands
 
-## Prerequisites
+## Prerequisites <a name = "prerequisites"></a>
 
 -   [Node.js](https://nodejs.org/en/)
 -   [Solana Tools](https://docs.solana.com/cli/install-solana-cli-tools)
